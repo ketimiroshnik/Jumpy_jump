@@ -3,7 +3,7 @@ import pytmx
 import sys
 import os
 
-FPS = 30
+FPS = 40
 SIZE = WIDTH, HEIGHT = 600, 320
 
 IMAGES_DIR = "images"
@@ -12,6 +12,8 @@ MAPS_DIR = 'maps'
 pygame.init()
 screen = pygame.display.set_mode(SIZE)
 clock = pygame.time.Clock()
+
+tile_width, tile_height = 32, 32
 
 
 def terminate():
@@ -78,9 +80,13 @@ def show_message(screen, message):
 
 
 class Player(pygame.sprite.Sprite):
+    images = {'down': pygame.transform.scale(load_image("hero_down.png"), (tile_width, tile_height)),
+              'up': pygame.transform.scale(load_image("hero_up.png"), (tile_width, tile_height))}
+
     def __init__(self, pos_x, pos_y):
         super().__init__(player_group, all_sprites)
-        self.image = player_image
+        self.images = Player.images
+        self.image = self.images['down']
         self.rect = self.image.get_rect().move(tile_width * pos_x,
                                                tile_height * pos_y)
         self.dx = 0
@@ -91,8 +97,10 @@ class Player(pygame.sprite.Sprite):
     def press(self):
         if self.now == self.d['up']:
             self.now = self.d['down']
+            self.image = self.images['down']
         else:
             self.now = self.d['up']
+            self.image = self.images['up']
 
     def update(self):
         if self.now == self.d['up']:
@@ -100,17 +108,16 @@ class Player(pygame.sprite.Sprite):
                 y = self.rect.y // tile_height
                 x1 = (self.rect.x - self.dx) // tile_width
                 x2 = (self.rect.x - self.dx + tile_width - 1) // tile_width
-                if level.is_free((x1, y)) and level.is_free((x2, y)):
+                if level.is_free((x1, y - 1)) and level.is_free((x2, y - 1)):
                     self.rect = self.rect.move(0, -VH)
             else:
-                self.rect = self.rect.move(0, VH)
+                self.rect = self.rect.move(0, -VH)
         elif self.now == self.d['down']:
             if (self.rect.y + tile_height) % tile_height == 0:
                 y = (self.rect.y + tile_height) // tile_height
                 x1 = (self.rect.x - self.dx) // tile_width
                 x2 = (self.rect.x - self.dx + tile_width - 1) // tile_width
                 if level.is_free((x1, y)) and level.is_free((x2, y)):
-                    print(1)
                     self.rect = self.rect.move(0, VH)
             else:
                 self.rect = self.rect.move(0, VH)
@@ -132,23 +139,6 @@ class Player(pygame.sprite.Sprite):
         self.dy += y
 
 
-class Hero:
-    def __init__(self, pic, position):
-        self.x, self.y = position
-        self.image = player_image
-
-    def get_position(self):
-        return self.x, self.y
-
-    def set_position(self, position):
-        self.x, self.y = position
-
-    def render(self, screen):
-        delta = (self.image.get_width() - tile_width) // 2
-        screen.blit(self.image, (self.x * tile_width - delta,
-                                 self.y * tile_height - delta))
-
-
 class Camera:
     def __init__(self):
         self.dx = 0
@@ -162,7 +152,6 @@ class Camera:
         self.dx = -(target.rect.x + target.rect.w // 2 - WIDTH // 2)
         self.dy = 0
         target.set_delta(self.dx, self.dy)
-        # self.dy = -(target.rect.y + target.rect.h // 2 - HEIGHT // 2)
 
     def update_map(self, level):
         level.move(self.dx, self.dy)
@@ -221,8 +210,6 @@ class Game:
         pass
 
 
-tile_width, tile_height = 32, 32
-player = None
 camera = Camera()
 
 all_sprites = pygame.sprite.Group()
@@ -230,17 +217,15 @@ player_group = pygame.sprite.Group()
 
 player_image = pygame.transform.scale(load_image("hero_down.png"), (tile_width, tile_height))
 
-KH = 10
-KW = 10
-VH = tile_height / KH
-VW = tile_width / KW
+VH = 4
+VW = 4
 
 if __name__ == '__main__':
     # start_screen()
 
     screen.fill((0, 0, 0))
 
-    level = Map('example_map.tmx', [30, 15], 15)
+    level = Map('example_map_2.tmx', [30, 15], 15)
     hero = Player(0, 8)
     game = Game(level, hero)
 
@@ -268,7 +253,6 @@ if __name__ == '__main__':
         if game.check_win():
             game_over = True
             show_message(screen, "You won!")
-
 
         pygame.display.flip()
         clock.tick(FPS)

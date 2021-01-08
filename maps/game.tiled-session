@@ -3,7 +3,7 @@
         "height": 4300,
         "width": 2
     },
-    "activeFile": "example_map_2.tmx",
+    "activeFile": "example_map_3.tmx",
     "expandedProjectPaths": [
         "."
     ],
@@ -49,15 +49,23 @@
             "selectedLayer": 0,
             "viewCenter": {
                 "x": 499.5001470155836,
-                "y": 161.88179947074394
+                "y": 164.798588650397
             }
         },
         "example_map_2.tmx": {
             "scale": 0.4453125,
             "selectedLayer": 0,
             "viewCenter": {
-                "x": 784.8421052631578,
+                "x": 1090.2456140350876,
                 "y": 161.68421052631572
+            }
+        },
+        "example_map_3.tmx": {
+            "scale": 0.22486076732673266,
+            "selectedLayer": 0,
+            "viewCenter": {
+                "x": 1585.4255245958032,
+                "y": 240.14860681114556
             }
         },
         "tmw_desert_spacing.tsx": {
@@ -65,20 +73,22 @@
             "scaleInEditor": 1
         }
     },
-    "map.height": 10,
+    "map.height": 15,
     "map.lastUsedFormat": "tmx",
     "map.orientation": null,
-    "map.width": 50,
+    "map.width": 100,
     "openFiles": [
         "example_map.tmx",
         "tmw_desert_spacing.tsx",
-        "example_map_2.tmx"
+        "example_map_2.tmx",
+        "example_map_3.tmx"
     ],
     "project": "game.tiled-project",
     "recentFiles": [
         "example_map.tmx",
         "tmw_desert_spacing.tsx",
         "example_map_2.tmx",
+        "example_map_3.tmx",
         "C:/Users/Keti/Downloads/Tiled/безымянный2.tmx",
         "C:/Users/Keti/Downloads/Tiled/tmw_desert_spacing.tsx",
         "C:/Users/Keti/Downloads/Tiled/sewer_tileset.tsx",
