@@ -134,6 +134,9 @@ class Player(pygame.sprite.Sprite):
     def get_position(self):
         return (self.rect.x - self.dx) // tile_width, self.rect.y // tile_height
 
+    def get_screen_position(self):
+        return self.rect.x + tile_width, self.rect.y + tile_height
+
     def set_delta(self, x, y):
         self.dx += x
         self.dy += y
@@ -143,15 +146,21 @@ class Camera:
     def __init__(self):
         self.dx = 0
         self.dy = 0
+        self.done = False
 
     def apply(self, obj):
         obj.rect.x += self.dx
         obj.rect.y += self.dy
+        obj.set_delta(self.dx, self.dy)
 
-    def update(self, target):
-        self.dx = -(target.rect.x + target.rect.w // 2 - WIDTH // 2)
-        self.dy = 0
-        target.set_delta(self.dx, self.dy)
+    def update(self, hero, level):
+        if (hero.rect.x >= WIDTH / 2 or self.done) and ((level.width - 1) * tile_width + level.dx) >= WIDTH:
+            self.done = True
+            self.dx = -VW
+            self.dy = 0
+        else:
+            self.dx = 0
+            self.dy = 0
 
     def update_map(self, level):
         level.move(self.dx, self.dy)
@@ -207,7 +216,7 @@ class Game:
         return self.level.get_tile_id(self.hero.get_position()) == self.level.finish_tile
 
     def check_lose(self):
-        pass
+        return self.hero.get_screen_position()[0] <= 0
 
 
 camera = Camera()
@@ -219,9 +228,11 @@ player_image = pygame.transform.scale(load_image("hero_down.png"), (tile_width, 
 
 VH = 4
 VW = 4
+# количество пикселей передвижения за одни кадр по каждой оси
+# обязательно должно быть делителем размера тайла
 
 if __name__ == '__main__':
-    # start_screen()
+    start_screen()
 
     screen.fill((0, 0, 0))
 
@@ -243,7 +254,7 @@ if __name__ == '__main__':
 
         if not game_over:
             game.update()
-            camera.update(hero)
+            camera.update(hero, level)
             for sprite in all_sprites:
                 camera.apply(sprite)
             camera.update_map(level)
@@ -253,6 +264,9 @@ if __name__ == '__main__':
         if game.check_win():
             game_over = True
             show_message(screen, "You won!")
+        if game.check_lose():
+            game_over = True
+            show_message(screen, "You lost!")
 
         pygame.display.flip()
         clock.tick(FPS)
