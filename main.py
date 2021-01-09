@@ -1,9 +1,10 @@
 import pygame
 import pytmx
+import collections
 import sys
 import os
 
-FPS = 40
+FPS = 55
 SIZE = WIDTH, HEIGHT = 600, 320
 
 IMAGES_DIR = "images"
@@ -80,29 +81,58 @@ def show_message(screen, message):
 
 
 class Player(pygame.sprite.Sprite):
-    images = {'down': pygame.transform.scale(load_image("hero_down.png"), (tile_width, tile_height)),
-              'up': pygame.transform.scale(load_image("hero_up.png"), (tile_width, tile_height))}
-
-    def __init__(self, pos_x, pos_y):
+    def __init__(self, pos_x, pos_y, hero_name):
         super().__init__(player_group, all_sprites)
-        self.images = Player.images
-        self.image = self.images['down']
+
+        # выбор группы изображений
+        self.all_images = HERO_IMAGES[hero_name]
+        self.now_images = self.all_images['down']
+        self.info_img = {'index': 0, 'step': 1, 'frame': 0, 'score': 4}
+
+        self.image = self.now_images[0]
         self.rect = self.image.get_rect().move(tile_width * pos_x,
                                                tile_height * pos_y)
+
+        # суммарный сдвиг камеры
         self.dx = 0
         self.dy = 0
+
+        # обозначение куда сейчас идет персонаж
         self.d = {'up': 1, 'down': 2}
         self.now = self.d['down']
 
+    # сработал сигнал смены направления движения
     def press(self):
         if self.now == self.d['up']:
             self.now = self.d['down']
-            self.image = self.images['down']
+
+            # замена группы кадров
+            self.info_img = {'index': 0, 'step': 1, 'frame': 0, 'score': 4}
+            self.now_images = self.all_images['down']
+            self.image = self.now_images[0]
         else:
             self.now = self.d['up']
-            self.image = self.images['up']
+
+            # замена группы кадров
+            self.info_img = {'index': 0, 'step': 1, 'frame': 0, 'score': 4}
+            self.now_images = self.all_images['up']
+            self.image = self.now_images[0]
 
     def update(self):
+        # замена кадра
+        if self.info_img['frame'] == self.info_img['score']:
+            self.info_img['index'] += self.info_img['step']
+            self.info_img['frame'] = -1
+        self.info_img['frame'] += 1
+        if self.info_img['index'] > len(self.now_images) - 1:
+            self.info_img['index'] = 7
+            self.info_img['step'] = -1
+        elif self.info_img['index'] < 0:
+            self.info_img['index'] = 0
+            self.info_img['step'] = 1
+        self.image = self.now_images[self.info_img['index']]
+
+        # перемецение персонажа по вертикали если это возможно
         if self.now == self.d['up']:
             if self.rect.y % tile_height == 0:
                 y = self.rect.y // tile_height
@@ -122,6 +152,7 @@ class Player(pygame.sprite.Sprite):
             else:
                 self.rect = self.rect.move(0, VH)
 
+        # перемецение персонажа по горизонтали если это возможно
         if (self.rect.x - self.dx + tile_width) % tile_width == 0:
             x = (self.rect.x - self.dx + tile_width) // tile_width
             y1 = self.rect.y // tile_height
@@ -131,12 +162,15 @@ class Player(pygame.sprite.Sprite):
         else:
             self.rect = self.rect.move(VW, 0)
 
+    # возвращает координаты тайла, на котором находится
     def get_position(self):
         return (self.rect.x - self.dx) // tile_width, self.rect.y // tile_height
 
+    # возвращает абсолютные координаты
     def get_screen_position(self):
         return self.rect.x + tile_width, self.rect.y + tile_height
 
+    # фиксирует передвижение камеры
     def set_delta(self, x, y):
         self.dx += x
         self.dy += y
@@ -224,7 +258,24 @@ camera = Camera()
 all_sprites = pygame.sprite.Group()
 player_group = pygame.sprite.Group()
 
-player_image = pygame.transform.scale(load_image("hero_down.png"), (tile_width, tile_height))
+HERO_IMAGES = collections.defaultdict(dict)
+# хранение раскадровки каждого перса
+HERO_IMAGES['hero2'] = {'down': [pygame.transform.scale(load_image("hero2/run1.png"), (tile_width, tile_height)),
+                                 pygame.transform.scale(load_image("hero2/run2.png"), (tile_width, tile_height)),
+                                 pygame.transform.scale(load_image("hero2/run3.png"), (tile_width, tile_height)),
+                                 pygame.transform.scale(load_image("hero2/run4.png"), (tile_width, tile_height)),
+                                 pygame.transform.scale(load_image("hero2/run5.png"), (tile_width, tile_height)),
+                                 pygame.transform.scale(load_image("hero2/run6.png"), (tile_width, tile_height)),
+                                 pygame.transform.scale(load_image("hero2/run7.png"), (tile_width, tile_height)),
+                                 pygame.transform.scale(load_image("hero2/run8.png"), (tile_width, tile_height))],
+                        'up': [pygame.transform.scale(load_image("hero2/run11.png"), (tile_width, tile_height)),
+                               pygame.transform.scale(load_image("hero2/run21.png"), (tile_width, tile_height)),
+                               pygame.transform.scale(load_image("hero2/run31.png"), (tile_width, tile_height)),
+                               pygame.transform.scale(load_image("hero2/run41.png"), (tile_width, tile_height)),
+                               pygame.transform.scale(load_image("hero2/run51.png"), (tile_width, tile_height)),
+                               pygame.transform.scale(load_image("hero2/run61.png"), (tile_width, tile_height)),
+                               pygame.transform.scale(load_image("hero2/run71.png"), (tile_width, tile_height)),
+                               pygame.transform.scale(load_image("hero2/run81.png"), (tile_width, tile_height))]}
 
 VH = 4
 VW = 4
@@ -232,12 +283,13 @@ VW = 4
 # обязательно должно быть делителем размера тайла
 
 if __name__ == '__main__':
+    hero_name = 'hero2'
     start_screen()
 
     screen.fill((0, 0, 0))
 
     level = Map('example_map_2.tmx', [30, 15], 15)
-    hero = Player(0, 8)
+    hero = Player(0, 8, hero_name)
     game = Game(level, hero)
 
     running = True
