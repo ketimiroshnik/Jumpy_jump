@@ -1,10 +1,11 @@
 import pygame
 import pytmx
 import collections
+import random
 import sys
 import os
 
-FPS = 55
+FPS = 70
 SIZE = WIDTH, HEIGHT = 600, 320
 
 IMAGES_DIR = "images"
@@ -49,7 +50,7 @@ def start_screen():
     font = pygame.font.Font(None, 30)
     text_coord = 50
     for line in intro_text:
-        string_rendered = font.render(line, 1, pygame.Color('black'))
+        string_rendered = font.render(line, True, pygame.Color('black'))
         intro_rect = string_rendered.get_rect()
         text_coord += 10
         intro_rect.top = text_coord
@@ -87,7 +88,7 @@ class Player(pygame.sprite.Sprite):
         # выбор группы изображений
         self.all_images = HERO_IMAGES[hero_name]
         self.now_images = self.all_images['down']
-        self.info_img = {'index': 0, 'step': 1, 'frame': 0, 'score': 4}
+        self.info_img = {'index': 0, 'step': 1, 'frame': 0, 'score': self.all_images['frame']}
 
         self.image = self.now_images[0]
         self.rect = self.image.get_rect().move(tile_width * pos_x,
@@ -107,31 +108,18 @@ class Player(pygame.sprite.Sprite):
             self.now = self.d['down']
 
             # замена группы кадров
-            self.info_img = {'index': 0, 'step': 1, 'frame': 0, 'score': 4}
+            self.info_img = {'index': 0, 'step': 1, 'frame': 0, 'score': self.all_images['frame']}
             self.now_images = self.all_images['down']
             self.image = self.now_images[0]
         else:
             self.now = self.d['up']
 
             # замена группы кадров
-            self.info_img = {'index': 0, 'step': 1, 'frame': 0, 'score': 4}
+            self.info_img = {'index': 0, 'step': 1, 'frame': 0, 'score': self.all_images['frame']}
             self.now_images = self.all_images['up']
             self.image = self.now_images[0]
 
     def update(self):
-        # замена кадра
-        if self.info_img['frame'] == self.info_img['score']:
-            self.info_img['index'] += self.info_img['step']
-            self.info_img['frame'] = -1
-        self.info_img['frame'] += 1
-        if self.info_img['index'] > len(self.now_images) - 1:
-            self.info_img['index'] = 7
-            self.info_img['step'] = -1
-        elif self.info_img['index'] < 0:
-            self.info_img['index'] = 0
-            self.info_img['step'] = 1
-        self.image = self.now_images[self.info_img['index']]
-
         # перемецение персонажа по вертикали если это возможно
         if self.now == self.d['up']:
             if self.rect.y % tile_height == 0:
@@ -161,6 +149,19 @@ class Player(pygame.sprite.Sprite):
                 self.rect = self.rect.move(VW, 0)
         else:
             self.rect = self.rect.move(VW, 0)
+
+            # замена кадра
+        if self.info_img['frame'] == self.info_img['score']:
+            self.info_img['index'] += self.info_img['step']
+            self.info_img['frame'] = -1
+        self.info_img['frame'] += 1
+        if self.info_img['index'] > len(self.now_images) - 1:
+            self.info_img['index'] = len(self.now_images) - 1
+            self.info_img['step'] = -1
+        elif self.info_img['index'] < 0:
+            self.info_img['index'] = 0
+            self.info_img['step'] = 1
+        self.image = self.now_images[self.info_img['index']]
 
     # возвращает координаты тайла, на котором находится
     def get_position(self):
@@ -200,7 +201,7 @@ class Camera:
         level.move(self.dx, self.dy)
 
 
-class Map:
+class LevelMap:
     def __init__(self, filename, free_tile, finish_tile):
         global tile_height, tile_width
         self.map = pytmx.load_pygame(f"{MAPS_DIR}/{filename}")
@@ -209,8 +210,6 @@ class Map:
         self.tile_size = self.map.tilewidth
         self.free_tiles = free_tile
         self.finish_tile = finish_tile
-        # tile_width = self.width
-        # tile_height = self.height
         self.dx = 0
         self.dy = 0
 
@@ -232,9 +231,10 @@ class Map:
 
 
 class Game:
-    def __init__(self, level, hero):
+    def __init__(self, level, hero, camera):
         self.level = level
         self.hero = hero
+        self.camera = camera
 
     def render(self, screen):
         self.level.render(screen)
@@ -242,6 +242,10 @@ class Game:
 
     def update(self):
         self.hero.update()
+
+        self.camera.update(self.hero, self.level)
+        self.camera.apply(self.hero)
+        self.camera.update_map(self.level)
 
     def move_hero(self):
         self.hero.press()
@@ -253,29 +257,97 @@ class Game:
         return self.hero.get_screen_position()[0] <= 0
 
 
-camera = Camera()
-
 all_sprites = pygame.sprite.Group()
 player_group = pygame.sprite.Group()
 
-HERO_IMAGES = collections.defaultdict(dict)
+HERO_NAMES = ['hero1', 'hero2', 'hero3']
+LEVEL_NAMES = ['example_map_2']
+
 # хранение раскадровки каждого перса
+HERO_IMAGES = collections.defaultdict(dict)
+
+HERO_IMAGES['hero1'] = {'down': [pygame.transform.scale(load_image("hero1/run1.png"), (tile_width, tile_height)),
+                                 pygame.transform.scale(load_image("hero1/run2.png"), (tile_width, tile_height)),
+                                 pygame.transform.scale(load_image("hero1/run3.png"), (tile_width, tile_height)),
+                                 pygame.transform.scale(load_image("hero1/run4.png"), (tile_width, tile_height)),
+                                 pygame.transform.scale(load_image("hero1/run5.png"), (tile_width, tile_height)),
+                                 pygame.transform.scale(load_image("hero1/run6.png"), (tile_width, tile_height))],
+                        'up': [pygame.transform.scale(load_image("hero1/run11.png"), (tile_width, tile_height)),
+                               pygame.transform.scale(load_image("hero1/run21.png"), (tile_width, tile_height)),
+                               pygame.transform.scale(load_image("hero1/run31.png"), (tile_width, tile_height)),
+                               pygame.transform.scale(load_image("hero1/run41.png"), (tile_width, tile_height)),
+                               pygame.transform.scale(load_image("hero1/run51.png"), (tile_width, tile_height)),
+                               pygame.transform.scale(load_image("hero1/run61.png"), (tile_width, tile_height))],
+                        'state': pygame.transform.scale(load_image("hero1/hero.png"), (tile_width, tile_height)),
+                        'frame': 2}
+
 HERO_IMAGES['hero2'] = {'down': [pygame.transform.scale(load_image("hero2/run1.png"), (tile_width, tile_height)),
                                  pygame.transform.scale(load_image("hero2/run2.png"), (tile_width, tile_height)),
                                  pygame.transform.scale(load_image("hero2/run3.png"), (tile_width, tile_height)),
                                  pygame.transform.scale(load_image("hero2/run4.png"), (tile_width, tile_height)),
                                  pygame.transform.scale(load_image("hero2/run5.png"), (tile_width, tile_height)),
-                                 pygame.transform.scale(load_image("hero2/run6.png"), (tile_width, tile_height)),
-                                 pygame.transform.scale(load_image("hero2/run7.png"), (tile_width, tile_height)),
-                                 pygame.transform.scale(load_image("hero2/run8.png"), (tile_width, tile_height))],
+                                 pygame.transform.scale(load_image("hero2/run6.png"), (tile_width, tile_height))],
                         'up': [pygame.transform.scale(load_image("hero2/run11.png"), (tile_width, tile_height)),
                                pygame.transform.scale(load_image("hero2/run21.png"), (tile_width, tile_height)),
                                pygame.transform.scale(load_image("hero2/run31.png"), (tile_width, tile_height)),
                                pygame.transform.scale(load_image("hero2/run41.png"), (tile_width, tile_height)),
                                pygame.transform.scale(load_image("hero2/run51.png"), (tile_width, tile_height)),
-                               pygame.transform.scale(load_image("hero2/run61.png"), (tile_width, tile_height)),
-                               pygame.transform.scale(load_image("hero2/run71.png"), (tile_width, tile_height)),
-                               pygame.transform.scale(load_image("hero2/run81.png"), (tile_width, tile_height))]}
+                               pygame.transform.scale(load_image("hero2/run61.png"), (tile_width, tile_height))],
+                        'state': pygame.transform.scale(load_image("hero2/hero.png"), (tile_width, tile_height)),
+                        'frame': 2}
+
+HERO_IMAGES['hero3'] = {'down': [pygame.transform.scale(load_image("hero3/run1.png"), (tile_width, tile_height)),
+                                 pygame.transform.scale(load_image("hero3/run2.png"), (tile_width, tile_height)),
+                                 pygame.transform.scale(load_image("hero3/run3.png"), (tile_width, tile_height)),
+                                 pygame.transform.scale(load_image("hero3/run4.png"), (tile_width, tile_height)),
+                                 pygame.transform.scale(load_image("hero3/run5.png"), (tile_width, tile_height)),
+                                 pygame.transform.scale(load_image("hero3/run6.png"), (tile_width, tile_height))],
+                        'up': [pygame.transform.scale(load_image("hero3/run11.png"), (tile_width, tile_height)),
+                               pygame.transform.scale(load_image("hero3/run21.png"), (tile_width, tile_height)),
+                               pygame.transform.scale(load_image("hero3/run31.png"), (tile_width, tile_height)),
+                               pygame.transform.scale(load_image("hero3/run41.png"), (tile_width, tile_height)),
+                               pygame.transform.scale(load_image("hero3/run51.png"), (tile_width, tile_height)),
+                               pygame.transform.scale(load_image("hero3/run61.png"), (tile_width, tile_height))],
+                        'state': pygame.transform.scale(load_image("hero3/hero.png"), (tile_width, tile_height)),
+                        'frame': 2}
+
+HERO_IMAGES['hero4'] = {'down': [pygame.transform.scale(load_image("hero4/run1.png"), (tile_width, tile_height)),
+                                 pygame.transform.scale(load_image("hero4/run2.png"), (tile_width, tile_height)),
+                                 pygame.transform.scale(load_image("hero4/run3.png"), (tile_width, tile_height)),
+                                 pygame.transform.scale(load_image("hero4/run4.png"), (tile_width, tile_height)),
+                                 pygame.transform.scale(load_image("hero4/run5.png"), (tile_width, tile_height)),
+                                 pygame.transform.scale(load_image("hero4/run6.png"), (tile_width, tile_height)),
+                                 pygame.transform.scale(load_image("hero4/run7.png"), (tile_width, tile_height)),
+                                 pygame.transform.scale(load_image("hero4/run8.png"), (tile_width, tile_height))],
+                        'up': [pygame.transform.scale(load_image("hero4/run11.png"), (tile_width, tile_height)),
+                               pygame.transform.scale(load_image("hero4/run21.png"), (tile_width, tile_height)),
+                               pygame.transform.scale(load_image("hero4/run31.png"), (tile_width, tile_height)),
+                               pygame.transform.scale(load_image("hero4/run41.png"), (tile_width, tile_height)),
+                               pygame.transform.scale(load_image("hero4/run51.png"), (tile_width, tile_height)),
+                               pygame.transform.scale(load_image("hero4/run61.png"), (tile_width, tile_height)),
+                               pygame.transform.scale(load_image("hero4/run71.png"), (tile_width, tile_height)),
+                               pygame.transform.scale(load_image("hero4/run81.png"), (tile_width, tile_height))],
+                        'state': pygame.transform.scale(load_image("hero4/hero.png"), (tile_width, tile_height)),
+                        'frame': 3}
+
+HERO_IMAGES['hero5'] = {'down': [pygame.transform.scale(load_image("hero5/run1.png"), (tile_width, tile_height)),
+                                 pygame.transform.scale(load_image("hero5/run2.png"), (tile_width, tile_height)),
+                                 pygame.transform.scale(load_image("hero5/run3.png"), (tile_width, tile_height)),
+                                 pygame.transform.scale(load_image("hero5/run4.png"), (tile_width, tile_height)),
+                                 pygame.transform.scale(load_image("hero5/run5.png"), (tile_width, tile_height)),
+                                 pygame.transform.scale(load_image("hero5/run6.png"), (tile_width, tile_height)),
+                                 pygame.transform.scale(load_image("hero5/run7.png"), (tile_width, tile_height)),
+                                 pygame.transform.scale(load_image("hero5/run8.png"), (tile_width, tile_height))],
+                        'up': [pygame.transform.scale(load_image("hero5/run11.png"), (tile_width, tile_height)),
+                               pygame.transform.scale(load_image("hero5/run21.png"), (tile_width, tile_height)),
+                               pygame.transform.scale(load_image("hero5/run31.png"), (tile_width, tile_height)),
+                               pygame.transform.scale(load_image("hero5/run41.png"), (tile_width, tile_height)),
+                               pygame.transform.scale(load_image("hero5/run51.png"), (tile_width, tile_height)),
+                               pygame.transform.scale(load_image("hero5/run61.png"), (tile_width, tile_height)),
+                               pygame.transform.scale(load_image("hero5/run71.png"), (tile_width, tile_height)),
+                               pygame.transform.scale(load_image("hero5/run81.png"), (tile_width, tile_height))],
+                        'state': pygame.transform.scale(load_image("hero5/hero.png"), (tile_width, tile_height)),
+                        'frame': 3}
 
 VH = 4
 VW = 4
@@ -283,14 +355,15 @@ VW = 4
 # обязательно должно быть делителем размера тайла
 
 if __name__ == '__main__':
-    hero_name = 'hero2'
+    hero_name = random.choice(HERO_NAMES)
     start_screen()
 
     screen.fill((0, 0, 0))
 
-    level = Map('example_map_2.tmx', [30, 15], 15)
+    level = LevelMap('example_map_2.tmx', [30, 15], 15)
     hero = Player(0, 8, hero_name)
-    game = Game(level, hero)
+    camera = Camera()
+    game = Game(level, hero, camera)
 
     running = True
     game_over = False
@@ -306,10 +379,6 @@ if __name__ == '__main__':
 
         if not game_over:
             game.update()
-            camera.update(hero, level)
-            for sprite in all_sprites:
-                camera.apply(sprite)
-            camera.update_map(level)
 
         game.render(screen)
 

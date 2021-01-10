@@ -3,7 +3,7 @@
         "height": 4300,
         "width": 2
     },
-    "activeFile": "example_map_3.tmx",
+    "activeFile": "example_map_2.tmx",
     "expandedProjectPaths": [
         "."
     ],
@@ -48,16 +48,16 @@
             "scale": 0.6856854838709677,
             "selectedLayer": 0,
             "viewCenter": {
-                "x": 499.5001470155836,
-                "y": 164.798588650397
+                "x": 479.08262275801235,
+                "y": 159.6942075860041
             }
         },
         "example_map_2.tmx": {
             "scale": 0.4453125,
             "selectedLayer": 0,
             "viewCenter": {
-                "x": 1090.2456140350876,
-                "y": 161.68421052631572
+                "x": 2855.2982456140353,
+                "y": 397.4736842105263
             }
         },
         "example_map_3.tmx": {
@@ -80,8 +80,7 @@
     "openFiles": [
         "example_map.tmx",
         "tmw_desert_spacing.tsx",
-        "example_map_2.tmx",
-        "example_map_3.tmx"
+        "example_map_2.tmx"
     ],
     "project": "game.tiled-project",
     "recentFiles": [
