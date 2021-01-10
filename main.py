@@ -6,7 +6,7 @@ import sys
 import os
 
 FPS = 70
-SIZE = WIDTH, HEIGHT = 600, 320
+SIZE = WIDTH, HEIGHT = 600, 350
 
 IMAGES_DIR = "images"
 MAPS_DIR = 'maps'
@@ -231,24 +231,40 @@ class LevelMap:
 
 
 class Game:
-    def __init__(self, level, hero, camera):
+    def __init__(self, level, hero, camera, buttons):
         self.level = level
         self.hero = hero
         self.camera = camera
+        self.buttons = buttons
+
+        self.is_pause = False
 
     def render(self, screen):
         self.level.render(screen)
         all_sprites.draw(screen)
+        for btn in self.buttons:
+            self.buttons[btn].render(screen)
 
     def update(self):
-        self.hero.update()
+        if not self.is_pause:
+            self.hero.update()
+            self.camera.update(self.hero, self.level)
+            self.camera.apply(self.hero)
+            self.camera.update_map(self.level)
 
-        self.camera.update(self.hero, self.level)
-        self.camera.apply(self.hero)
-        self.camera.update_map(self.level)
+    def check_buttons(self, pos):
+        if self.buttons['again'].get_click(pos):
+            return 1
+        if self.buttons['pause'].get_click(pos):
+            self.is_pause = not self.is_pause
+            return 2
+        if self.buttons['menu'].get_click(pos):
+            return 3
+        return None
 
     def move_hero(self):
-        self.hero.press()
+        if not self.is_pause:
+            self.hero.press()
 
     def check_win(self):
         return self.level.get_tile_id(self.hero.get_position()) == self.level.finish_tile
@@ -261,7 +277,9 @@ all_sprites = pygame.sprite.Group()
 player_group = pygame.sprite.Group()
 
 HERO_NAMES = ['hero1', 'hero2', 'hero3']
-LEVEL_NAMES = ['example_map_2']
+LEVEL_NAMES = ['example_map_2', 'example_map', 'example_map_2', 'example_map',
+               'example_map_2', 'example_map', 'example_map_2', 'example_map',
+               'example_map_2', 'example_map']
 
 # хранение раскадровки каждого перса
 HERO_IMAGES = collections.defaultdict(dict)
@@ -313,8 +331,67 @@ HERO_IMAGES['hero3'] = {'down': [pygame.transform.scale(load_image("hero3/run1.p
 
 VH = 4
 VW = 4
+
+
 # количество пикселей передвижения за одни кадр по каждой оси
 # обязательно должно быть делителем размера тайла
+
+
+class Buttons:
+    def __init__(self, pos, size):
+        self.pos = pos
+        self.size = size
+        self.image = None
+
+    def get_click(self, pos):
+        if self.pos is None or self.size is None:
+            return
+        if self.pos[0] <= pos[0] <= (self.pos[0] + self.size[0]) \
+                and self.pos[0] <= pos[0] <= (self.pos[0] + self.size[0]):
+            self.on_click()
+            return True
+        else:
+            return None
+
+    def render(self, screen):
+        if self.image:
+            screen.blit(self.image, self.pos)
+
+
+class AgainButton(Buttons):
+    image = load_image('restart_btn.png')
+
+    def __init__(self, pos, size):
+        super().__init__(pos, size)
+        self.image = pygame.transform.scale(AgainButton.image, self.size)
+
+    def on_click(self):
+        pass
+
+
+class PauseButton(Buttons):
+    images = [load_image('pause_btn.png'), load_image('play_btn.png')]
+
+    def __init__(self, pos, size):
+        super().__init__(pos, size)
+        self.images = PauseButton.images
+        self.ind_image = 0
+        self.image = pygame.transform.scale(self.images[self.ind_image], self.size)
+
+    def on_click(self):
+        self.ind_image = not self.ind_image
+        self.image = pygame.transform.scale(self.images[self.ind_image], self.size)
+
+
+class MenuButton(Buttons):
+    image = load_image('menu_btn.png')
+
+    def __init__(self, pos, size):
+        super().__init__(pos, size)
+        self.image = pygame.transform.scale(MenuButton.image, self.size)
+
+    def on_click(self):
+        pass
 
 
 def load_level(level_name):
@@ -329,12 +406,15 @@ def in_level(free_tiles, target_tile, level_name):
 
     hero_name = random.choice(HERO_NAMES)
 
+    all_sprites.empty()
     screen.fill((0, 0, 0))
 
     level = LevelMap(f'{level_name}.tmx', free_tiles, target_tile)
     hero = Player(0, 8, hero_name)
     camera = Camera()
-    game = Game(level, hero, camera)
+    buttons = {'again': AgainButton((550, 320), (30, 30)), 'pause': PauseButton((500, 320), (30, 30)),
+               'menu': MenuButton((20, 320), (30, 30))}
+    game = Game(level, hero, camera, buttons)
 
     running = True
     game_over = False
@@ -345,6 +425,20 @@ def in_level(free_tiles, target_tile, level_name):
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_SPACE and not game_over:
                     game.move_hero()
+            if event.type == pygame.MOUSEBUTTONDOWN and not game_over:
+                res = game.check_buttons(event.pos)
+                if res == 1:
+                    all_sprites.empty()
+                    level = LevelMap(f'{level_name}.tmx', free_tiles, target_tile)
+                    hero = Player(0, 8, hero_name)
+                    camera = Camera()
+                    game = Game(level, hero, camera, buttons)
+                    break
+                elif res == 2:
+                    pass
+                elif res == 3:
+                    # переход в меню с уровнями
+                    pass
 
         screen.fill((245, 245, 220))
 
@@ -364,8 +458,12 @@ def in_level(free_tiles, target_tile, level_name):
         clock.tick(FPS)
 
 
-if __name__ == '__main__':
+def main():
     start_screen()
     screen.fill((0, 0, 0))
 
     in_level(*load_level('example_map_2'))
+
+
+if __name__ == '__main__':
+    main()
