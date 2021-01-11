@@ -277,9 +277,6 @@ all_sprites = pygame.sprite.Group()
 player_group = pygame.sprite.Group()
 
 HERO_NAMES = ['hero1', 'hero2', 'hero3']
-LEVEL_NAMES = ['example_map_2', 'example_map', 'example_map_2', 'example_map',
-               'example_map_2', 'example_map', 'example_map_2', 'example_map',
-               'example_map_2', 'example_map']
 
 # хранение раскадровки каждого перса
 HERO_IMAGES = collections.defaultdict(dict)
@@ -337,17 +334,22 @@ VW = 4
 # обязательно должно быть делителем размера тайла
 
 
-class Buttons:
-    def __init__(self, pos, size):
+class Button:
+    def __init__(self, pos, size, image_names):
         self.pos = pos
         self.size = size
-        self.image = None
+        self.images = []
+        self.ind_image = 0
+        for name in image_names:
+            self.images.append(pygame.transform.scale(load_image(name), self.size))
+
+        self.image = self.images[self.ind_image]
 
     def get_click(self, pos):
         if self.pos is None or self.size is None:
             return
         if self.pos[0] <= pos[0] <= (self.pos[0] + self.size[0]) \
-                and self.pos[0] <= pos[0] <= (self.pos[0] + self.size[0]):
+                and self.pos[1] <= pos[1] <= (self.pos[1] + self.size[1]):
             self.on_click()
             return True
         else:
@@ -357,52 +359,19 @@ class Buttons:
         if self.image:
             screen.blit(self.image, self.pos)
 
-
-class AgainButton(Buttons):
-    image = load_image('restart_btn.png')
-
-    def __init__(self, pos, size):
-        super().__init__(pos, size)
-        self.image = pygame.transform.scale(AgainButton.image, self.size)
-
     def on_click(self):
-        pass
-
-
-class PauseButton(Buttons):
-    images = [load_image('pause_btn.png'), load_image('play_btn.png')]
-
-    def __init__(self, pos, size):
-        super().__init__(pos, size)
-        self.images = PauseButton.images
-        self.ind_image = 0
-        self.image = pygame.transform.scale(self.images[self.ind_image], self.size)
-
-    def on_click(self):
-        self.ind_image = not self.ind_image
+        self.ind_image += 1
+        if self.ind_image >= len(self.images):
+            self.ind_image = 0
         self.image = pygame.transform.scale(self.images[self.ind_image], self.size)
 
 
-class MenuButton(Buttons):
-    image = load_image('menu_btn.png')
+def in_level(level_name):
+    global level, hero, camera, game
 
-    def __init__(self, pos, size):
-        super().__init__(pos, size)
-        self.image = pygame.transform.scale(MenuButton.image, self.size)
-
-    def on_click(self):
-        pass
-
-
-def load_level(level_name):
     with open(f'{MAPS_DIR}/{level_name}.txt') as file:
         free_tiles = list(map(int, file.readline().split()))
         target_tile = list(map(int, file.readline().split()))[0]
-    return free_tiles, target_tile, level_name
-
-
-def in_level(free_tiles, target_tile, level_name):
-    global level, hero, camera, game
 
     hero_name = random.choice(HERO_NAMES)
 
@@ -412,8 +381,9 @@ def in_level(free_tiles, target_tile, level_name):
     level = LevelMap(f'{level_name}.tmx', free_tiles, target_tile)
     hero = Player(0, 8, hero_name)
     camera = Camera()
-    buttons = {'again': AgainButton((550, 320), (30, 30)), 'pause': PauseButton((500, 320), (30, 30)),
-               'menu': MenuButton((20, 320), (30, 30))}
+    buttons = {'again': Button((550, 320), (30, 30), ['restart_btn.png']),
+               'pause': Button((500, 320), (30, 30), ['pause_btn.png', 'play_btn.png']),
+               'menu': Button((20, 320), (30, 30), ['menu_btn.png'])}
     game = Game(level, hero, camera, buttons)
 
     running = True
@@ -437,8 +407,8 @@ def in_level(free_tiles, target_tile, level_name):
                 elif res == 2:
                     pass
                 elif res == 3:
+                    return level_menu()
                     # переход в меню с уровнями
-                    pass
 
         screen.fill((245, 245, 220))
 
@@ -458,11 +428,111 @@ def in_level(free_tiles, target_tile, level_name):
         clock.tick(FPS)
 
 
+LEVEL_NAMES = {1: 'example_map_2', 2: 'example_map', 3: 'example_map_2', 4: 'example_map',
+               5: 'example_map_2', 6: 'example_map', 7: 'example_map_2', 8: 'example_map',
+               9: 'example_map_2', 10: 'example_map'}
+LEVEL_COUNT = 10
+
+level_statuses = {1: True, 2: True, 3: True, 4: False, 5: None, 6: None, 7: None, 8: None, 9: None, 10: None}
+
+
+class LevelIcon:
+    images = {'table': load_image('table.png'), 'unlock': load_image('unlock.png'), 'lock': load_image('lock.png')}
+
+    def __init__(self, number, status, pos, size):
+        font = pygame.font.Font(None, 26)
+        text = font.render(f"{number}", True, (200, 20, 0))
+        x = (size[0] - text.get_width()) // 2
+        y = (size[1] - text.get_height()) // 2
+        if status:
+            self.image = pygame.transform.scale(LevelIcon.images['table'], size)
+        elif status is None:
+            self.image = pygame.transform.scale(LevelIcon.images['lock'], size)
+            y += size[1] / 6
+        else:
+            self.image = pygame.transform.scale(LevelIcon.images['unlock'], size)
+            y += size[1] / 6
+
+        self.image.blit(text, (x, y))
+
+        self.pos = pos
+        self.number = number
+        self.size = size
+        self.status = status
+
+    def render(self, screen):
+        screen.blit(self.image, self.pos)
+
+    def get_click(self, pos):
+        if self.pos is None or self.size is None or self.status is None:
+            return False
+        if self.pos[0] <= pos[0] <= (self.pos[0] + self.size[0]) \
+                and self.pos[1] <= pos[1] <= (self.pos[1] + self.size[1]):
+            return True
+        else:
+            return False
+
+
+class LevelMenu:
+    def __init__(self, level_icons):
+        self.level_icons = level_icons
+
+    def render(self, screen):
+        for obj in self.level_icons:
+            obj.render(screen)
+
+    def get_click(self, pos):
+        for obj in self.level_icons:
+            if obj.get_click(pos):
+                return obj.number
+
+
+def level_menu():
+    global level_statuses
+
+    all_sprites.empty()
+    screen.fill((245, 245, 220))
+
+    level_icons = []
+
+    for i in range(LEVEL_COUNT):
+        size = (80, 80)
+        delta = (30, 50)
+        left = (WIDTH - size[0] * 5 - delta[0] * 4) // 2
+        top = 70
+        x = left + (i % 5) * size[0] + i % 5 * delta[0]
+        y = top + (i // 5) * size[1] + i // 5 * delta[1]
+        level_icons.append(LevelIcon(i + 1, level_statuses[i + 1], (x, y), size))
+
+    menu = LevelMenu(level_icons)
+
+    running = True
+    game_over = False
+    while running:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                terminate()
+            if event.type == pygame.MOUSEBUTTONDOWN and not game_over:
+                res = menu.get_click(event.pos)
+                if res in range(1, LEVEL_COUNT + 1):
+                    return in_level(LEVEL_NAMES[res])
+                # переход в уровень
+
+        screen.fill((245, 245, 220))
+
+        menu.render(screen)
+
+        pygame.display.flip()
+        clock.tick(FPS)
+
+
 def main():
-    start_screen()
+    global signs
+    # start_screen()
     screen.fill((0, 0, 0))
 
-    in_level(*load_level('example_map_2'))
+    # in_level('example_map_2')
+    level_menu()
 
 
 if __name__ == '__main__':
