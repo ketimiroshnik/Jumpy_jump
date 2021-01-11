@@ -17,10 +17,10 @@ clock = pygame.time.Clock()
 
 tile_width, tile_height = 32, 32
 
-
-def terminate():
-    pygame.quit()
-    sys.exit()
+VH = 4
+VW = 4
+# количество пикселей передвижения за одни кадр по каждой оси
+# обязательно должно быть делителем размера тайла
 
 
 def load_image(name, colorkey=None):
@@ -39,34 +39,76 @@ def load_image(name, colorkey=None):
     return image
 
 
-def start_screen():
-    intro_text = ["ЗАСТАВКА", "",
-                  "Правила игры",
-                  "Если в правилах несколько строк,",
-                  "приходится выводить их построчно"]
+LEVEL_NAMES = {1: 'example_map_2', 2: 'example_map', 3: 'example_map_2', 4: 'example_map',
+               5: 'example_map_2', 6: 'example_map', 7: 'example_map_2', 8: 'example_map',
+               9: 'example_map_2', 10: 'example_map'}
+LEVEL_COUNT = 10
 
-    fon = pygame.transform.scale(load_image('fon.png'), (WIDTH, HEIGHT))
-    screen.blit(fon, (0, 0))
-    font = pygame.font.Font(None, 30)
-    text_coord = 50
-    for line in intro_text:
-        string_rendered = font.render(line, True, pygame.Color('black'))
-        intro_rect = string_rendered.get_rect()
-        text_coord += 10
-        intro_rect.top = text_coord
-        intro_rect.x = 10
-        text_coord += intro_rect.height
-        screen.blit(string_rendered, intro_rect)
+HERO_NAMES = ['hero1', 'hero2', 'hero3']
 
-    while True:
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                terminate()
-            elif event.type == pygame.KEYDOWN or \
-                    event.type == pygame.MOUSEBUTTONDOWN:
-                return  # начинаем игру
-        pygame.display.flip()
-        clock.tick(FPS)
+# хранение раскадровки каждого перса
+HERO_IMAGES = collections.defaultdict(dict)
+
+HERO_IMAGES['hero1'] = {'down': [pygame.transform.scale(load_image("hero1/run1.png"), (tile_width, tile_height)),
+                                 pygame.transform.scale(load_image("hero1/run2.png"), (tile_width, tile_height)),
+                                 pygame.transform.scale(load_image("hero1/run3.png"), (tile_width, tile_height)),
+                                 pygame.transform.scale(load_image("hero1/run4.png"), (tile_width, tile_height)),
+                                 pygame.transform.scale(load_image("hero1/run5.png"), (tile_width, tile_height)),
+                                 pygame.transform.scale(load_image("hero1/run6.png"), (tile_width, tile_height))],
+                        'up': [pygame.transform.scale(load_image("hero1/run11.png"), (tile_width, tile_height)),
+                               pygame.transform.scale(load_image("hero1/run21.png"), (tile_width, tile_height)),
+                               pygame.transform.scale(load_image("hero1/run31.png"), (tile_width, tile_height)),
+                               pygame.transform.scale(load_image("hero1/run41.png"), (tile_width, tile_height)),
+                               pygame.transform.scale(load_image("hero1/run51.png"), (tile_width, tile_height)),
+                               pygame.transform.scale(load_image("hero1/run61.png"), (tile_width, tile_height))],
+                        'state': pygame.transform.scale(load_image("hero1/hero.png"), (tile_width, tile_height)),
+                        'frame': 2}
+
+HERO_IMAGES['hero2'] = {'down': [pygame.transform.scale(load_image("hero2/run1.png"), (tile_width, tile_height)),
+                                 pygame.transform.scale(load_image("hero2/run2.png"), (tile_width, tile_height)),
+                                 pygame.transform.scale(load_image("hero2/run3.png"), (tile_width, tile_height)),
+                                 pygame.transform.scale(load_image("hero2/run4.png"), (tile_width, tile_height)),
+                                 pygame.transform.scale(load_image("hero2/run5.png"), (tile_width, tile_height)),
+                                 pygame.transform.scale(load_image("hero2/run6.png"), (tile_width, tile_height))],
+                        'up': [pygame.transform.scale(load_image("hero2/run11.png"), (tile_width, tile_height)),
+                               pygame.transform.scale(load_image("hero2/run21.png"), (tile_width, tile_height)),
+                               pygame.transform.scale(load_image("hero2/run31.png"), (tile_width, tile_height)),
+                               pygame.transform.scale(load_image("hero2/run41.png"), (tile_width, tile_height)),
+                               pygame.transform.scale(load_image("hero2/run51.png"), (tile_width, tile_height)),
+                               pygame.transform.scale(load_image("hero2/run61.png"), (tile_width, tile_height))],
+                        'state': pygame.transform.scale(load_image("hero2/hero.png"), (tile_width, tile_height)),
+                        'frame': 2}
+
+HERO_IMAGES['hero3'] = {'down': [pygame.transform.scale(load_image("hero3/run1.png"), (tile_width, tile_height)),
+                                 pygame.transform.scale(load_image("hero3/run2.png"), (tile_width, tile_height)),
+                                 pygame.transform.scale(load_image("hero3/run3.png"), (tile_width, tile_height)),
+                                 pygame.transform.scale(load_image("hero3/run4.png"), (tile_width, tile_height)),
+                                 pygame.transform.scale(load_image("hero3/run5.png"), (tile_width, tile_height)),
+                                 pygame.transform.scale(load_image("hero3/run6.png"), (tile_width, tile_height))],
+                        'up': [pygame.transform.scale(load_image("hero3/run11.png"), (tile_width, tile_height)),
+                               pygame.transform.scale(load_image("hero3/run21.png"), (tile_width, tile_height)),
+                               pygame.transform.scale(load_image("hero3/run31.png"), (tile_width, tile_height)),
+                               pygame.transform.scale(load_image("hero3/run41.png"), (tile_width, tile_height)),
+                               pygame.transform.scale(load_image("hero3/run51.png"), (tile_width, tile_height)),
+                               pygame.transform.scale(load_image("hero3/run61.png"), (tile_width, tile_height))],
+                        'state': pygame.transform.scale(load_image("hero3/hero.png"), (tile_width, tile_height)),
+                        'frame': 2}
+
+all_sprites = pygame.sprite.Group()
+player_group = pygame.sprite.Group()
+
+# множитель монет
+COINS_PER_LEVEL = 10
+
+# состояние пройденности уровней
+level_statuses = {1: True, 2: True, 3: True, 4: False, 5: None, 6: None, 7: None, 8: None, 9: None, 10: None}
+# финансовое состояние игрока
+coins_status = 20
+
+
+def terminate():
+    pygame.quit()
+    sys.exit()
 
 
 def show_message(screen, message):
@@ -231,19 +273,25 @@ class LevelMap:
 
 
 class Game:
-    def __init__(self, level, hero, camera, buttons):
+    def __init__(self, level, hero, camera, level_number):
+        self.is_pause = False
+
         self.level = level
         self.hero = hero
         self.camera = camera
-        self.buttons = buttons
+        self.buttons = {'again': Button((550, 320), (30, 30), ['restart_btn.png']),
+                        'pause': Button((500, 320), (30, 30), ['pause_btn.png', 'play_btn.png']),
+                        'menu': Button((20, 320), (30, 30), ['menu_btn.png'])}
 
-        self.is_pause = False
+        font = pygame.font.Font(None, 25)
+        self.text = font.render(f"Уровень {level_number}", True, (100, 100, 100))
 
     def render(self, screen):
         self.level.render(screen)
         all_sprites.draw(screen)
         for btn in self.buttons:
             self.buttons[btn].render(screen)
+        screen.blit(self.text, ((WIDTH - self.text.get_width()) // 2, 330))
 
     def update(self):
         if not self.is_pause:
@@ -271,67 +319,6 @@ class Game:
 
     def check_lose(self):
         return self.hero.get_screen_position()[0] <= 0
-
-
-all_sprites = pygame.sprite.Group()
-player_group = pygame.sprite.Group()
-
-HERO_NAMES = ['hero1', 'hero2', 'hero3']
-
-# хранение раскадровки каждого перса
-HERO_IMAGES = collections.defaultdict(dict)
-
-HERO_IMAGES['hero1'] = {'down': [pygame.transform.scale(load_image("hero1/run1.png"), (tile_width, tile_height)),
-                                 pygame.transform.scale(load_image("hero1/run2.png"), (tile_width, tile_height)),
-                                 pygame.transform.scale(load_image("hero1/run3.png"), (tile_width, tile_height)),
-                                 pygame.transform.scale(load_image("hero1/run4.png"), (tile_width, tile_height)),
-                                 pygame.transform.scale(load_image("hero1/run5.png"), (tile_width, tile_height)),
-                                 pygame.transform.scale(load_image("hero1/run6.png"), (tile_width, tile_height))],
-                        'up': [pygame.transform.scale(load_image("hero1/run11.png"), (tile_width, tile_height)),
-                               pygame.transform.scale(load_image("hero1/run21.png"), (tile_width, tile_height)),
-                               pygame.transform.scale(load_image("hero1/run31.png"), (tile_width, tile_height)),
-                               pygame.transform.scale(load_image("hero1/run41.png"), (tile_width, tile_height)),
-                               pygame.transform.scale(load_image("hero1/run51.png"), (tile_width, tile_height)),
-                               pygame.transform.scale(load_image("hero1/run61.png"), (tile_width, tile_height))],
-                        'state': pygame.transform.scale(load_image("hero1/hero.png"), (tile_width, tile_height)),
-                        'frame': 2}
-
-HERO_IMAGES['hero2'] = {'down': [pygame.transform.scale(load_image("hero2/run1.png"), (tile_width, tile_height)),
-                                 pygame.transform.scale(load_image("hero2/run2.png"), (tile_width, tile_height)),
-                                 pygame.transform.scale(load_image("hero2/run3.png"), (tile_width, tile_height)),
-                                 pygame.transform.scale(load_image("hero2/run4.png"), (tile_width, tile_height)),
-                                 pygame.transform.scale(load_image("hero2/run5.png"), (tile_width, tile_height)),
-                                 pygame.transform.scale(load_image("hero2/run6.png"), (tile_width, tile_height))],
-                        'up': [pygame.transform.scale(load_image("hero2/run11.png"), (tile_width, tile_height)),
-                               pygame.transform.scale(load_image("hero2/run21.png"), (tile_width, tile_height)),
-                               pygame.transform.scale(load_image("hero2/run31.png"), (tile_width, tile_height)),
-                               pygame.transform.scale(load_image("hero2/run41.png"), (tile_width, tile_height)),
-                               pygame.transform.scale(load_image("hero2/run51.png"), (tile_width, tile_height)),
-                               pygame.transform.scale(load_image("hero2/run61.png"), (tile_width, tile_height))],
-                        'state': pygame.transform.scale(load_image("hero2/hero.png"), (tile_width, tile_height)),
-                        'frame': 2}
-
-HERO_IMAGES['hero3'] = {'down': [pygame.transform.scale(load_image("hero3/run1.png"), (tile_width, tile_height)),
-                                 pygame.transform.scale(load_image("hero3/run2.png"), (tile_width, tile_height)),
-                                 pygame.transform.scale(load_image("hero3/run3.png"), (tile_width, tile_height)),
-                                 pygame.transform.scale(load_image("hero3/run4.png"), (tile_width, tile_height)),
-                                 pygame.transform.scale(load_image("hero3/run5.png"), (tile_width, tile_height)),
-                                 pygame.transform.scale(load_image("hero3/run6.png"), (tile_width, tile_height))],
-                        'up': [pygame.transform.scale(load_image("hero3/run11.png"), (tile_width, tile_height)),
-                               pygame.transform.scale(load_image("hero3/run21.png"), (tile_width, tile_height)),
-                               pygame.transform.scale(load_image("hero3/run31.png"), (tile_width, tile_height)),
-                               pygame.transform.scale(load_image("hero3/run41.png"), (tile_width, tile_height)),
-                               pygame.transform.scale(load_image("hero3/run51.png"), (tile_width, tile_height)),
-                               pygame.transform.scale(load_image("hero3/run61.png"), (tile_width, tile_height))],
-                        'state': pygame.transform.scale(load_image("hero3/hero.png"), (tile_width, tile_height)),
-                        'frame': 2}
-
-VH = 4
-VW = 4
-
-
-# количество пикселей передвижения за одни кадр по каждой оси
-# обязательно должно быть делителем размера тайла
 
 
 class Button:
@@ -366,78 +353,29 @@ class Button:
         self.image = pygame.transform.scale(self.images[self.ind_image], self.size)
 
 
-def in_level(level_name):
-    global level, hero, camera, game
+# выводит в указанной позиции финансы игрока
+class CoinsStatus:
+    def __init__(self, pos):
+        self.pos = pos
+        self.icon_size = 20, 20
+        self.text_size = 50, 20
+        self.image = pygame.Surface((self.icon_size[0] + self.text_size[0], self.icon_size[1] + self.text_size[1]),
+                                    pygame.SRCALPHA, 32)
+        self.image.blit(pygame.transform.scale(load_image('coins.png'), self.icon_size), (0, 0))
 
-    with open(f'{MAPS_DIR}/{level_name}.txt') as file:
-        free_tiles = list(map(int, file.readline().split()))
-        target_tile = list(map(int, file.readline().split()))[0]
-
-    hero_name = random.choice(HERO_NAMES)
-
-    all_sprites.empty()
-    screen.fill((0, 0, 0))
-
-    level = LevelMap(f'{level_name}.tmx', free_tiles, target_tile)
-    hero = Player(0, 8, hero_name)
-    camera = Camera()
-    buttons = {'again': Button((550, 320), (30, 30), ['restart_btn.png']),
-               'pause': Button((500, 320), (30, 30), ['pause_btn.png', 'play_btn.png']),
-               'menu': Button((20, 320), (30, 30), ['menu_btn.png'])}
-    game = Game(level, hero, camera, buttons)
-
-    running = True
-    game_over = False
-    while running:
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                terminate()
-            if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_SPACE and not game_over:
-                    game.move_hero()
-            if event.type == pygame.MOUSEBUTTONDOWN and not game_over:
-                res = game.check_buttons(event.pos)
-                if res == 1:
-                    all_sprites.empty()
-                    level = LevelMap(f'{level_name}.tmx', free_tiles, target_tile)
-                    hero = Player(0, 8, hero_name)
-                    camera = Camera()
-                    game = Game(level, hero, camera, buttons)
-                    break
-                elif res == 2:
-                    pass
-                elif res == 3:
-                    return level_menu()
-                    # переход в меню с уровнями
-
-        screen.fill((245, 245, 220))
-
-        if not game_over:
-            game.update()
-
-        game.render(screen)
-
-        if game.check_win():
-            game_over = True
-            show_message(screen, "You won!")
-        if game.check_lose():
-            game_over = True
-            show_message(screen, "You lost!")
-
-        pygame.display.flip()
-        clock.tick(FPS)
+    def render(self, screen):
+        image = self.image
+        font = pygame.font.Font(None, 20)
+        text = font.render(f"{coins_status}", True, (0, 0, 0))
+        x = (self.text_size[0] - text.get_width()) // 2
+        y = (self.text_size[1] - text.get_height()) // 2
+        image.blit(text, (x + self.icon_size[0], y))
+        screen.blit(image, self.pos)
 
 
-LEVEL_NAMES = {1: 'example_map_2', 2: 'example_map', 3: 'example_map_2', 4: 'example_map',
-               5: 'example_map_2', 6: 'example_map', 7: 'example_map_2', 8: 'example_map',
-               9: 'example_map_2', 10: 'example_map'}
-LEVEL_COUNT = 10
-
-level_statuses = {1: True, 2: True, 3: True, 4: False, 5: None, 6: None, 7: None, 8: None, 9: None, 10: None}
-
-
+# иконки уровней в меню
 class LevelIcon:
-    images = {'table': load_image('table.png'), 'unlock': load_image('unlock.png'), 'lock': load_image('lock.png')}
+    images = {'table': load_image('level.png'), 'unlock': load_image('unlock.png'), 'lock': load_image('lock.png')}
 
     def __init__(self, number, status, pos, size):
         font = pygame.font.Font(None, 26)
@@ -473,20 +411,32 @@ class LevelIcon:
             return False
 
 
+# меню с уровнями
 class LevelMenu:
     def __init__(self, level_icons):
         self.level_icons = level_icons
+        self.buttons = {'shop': Button(pos=(540, 10), size=(35, 35), image_names=['shop_btn.png']),
+                        'mainmenu': Button(pos=(220, 10), size=(150, 30), image_names=['mainmenu_btn.png'])}
+        self.coins = CoinsStatus((20, 20))
 
     def render(self, screen):
         for obj in self.level_icons:
             obj.render(screen)
+        for btn in self.buttons:
+            self.buttons[btn].render(screen)
+        self.coins.render(screen)
 
     def get_click(self, pos):
         for obj in self.level_icons:
             if obj.get_click(pos):
                 return obj.number
+        if self.buttons['shop'].get_click(pos):
+            return LEVEL_COUNT + 1
+        elif self.buttons['mainmenu'].get_click(pos):
+            return LEVEL_COUNT + 2
 
 
+# функция, реализующая меню с уровнями
 def level_menu():
     global level_statuses
 
@@ -507,16 +457,21 @@ def level_menu():
     menu = LevelMenu(level_icons)
 
     running = True
-    game_over = False
     while running:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 terminate()
-            if event.type == pygame.MOUSEBUTTONDOWN and not game_over:
+            if event.type == pygame.MOUSEBUTTONDOWN:
                 res = menu.get_click(event.pos)
                 if res in range(1, LEVEL_COUNT + 1):
-                    return in_level(LEVEL_NAMES[res])
-                # переход в уровень
+                    return in_level(res)
+                    # переход в уровень
+                if res == LEVEL_COUNT + 1:
+                    # переход в магазин
+                    pass
+                elif res == LEVEL_COUNT + 2:
+                    # переход в главное меню
+                    pass
 
         screen.fill((245, 245, 220))
 
@@ -526,12 +481,168 @@ def level_menu():
         clock.tick(FPS)
 
 
-def main():
-    global signs
-    # start_screen()
+# процесс игры в уровне
+def in_level(level_number):
+    global level, hero, camera, game, coins_status
+
+    level_name = LEVEL_NAMES[level_number]
+
+    with open(f'{MAPS_DIR}/{level_name}.txt') as file:
+        free_tiles = list(map(int, file.readline().split()))
+        target_tile = list(map(int, file.readline().split()))[0]
+
+    hero_name = random.choice(HERO_NAMES)
+
+    all_sprites.empty()
     screen.fill((0, 0, 0))
 
-    # in_level('example_map_2')
+    level = LevelMap(f'{level_name}.tmx', free_tiles, target_tile)
+    hero = Player(0, 8, hero_name)
+    camera = Camera()
+    game = Game(level, hero, camera, level_number)
+
+    running = True
+    while running:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                terminate()
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_SPACE:
+                    game.move_hero()
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                res = game.check_buttons(event.pos)
+                if res == 1:
+                    all_sprites.empty()
+                    level = LevelMap(f'{level_name}.tmx', free_tiles, target_tile)
+                    hero = Player(0, 8, hero_name)
+                    camera = Camera()
+                    game = Game(level, hero, camera, level_number)
+                    break
+                elif res == 2:
+                    pass
+                elif res == 3:
+                    return level_menu()
+                    # переход в меню с уровнями
+
+        screen.fill((245, 245, 220))
+
+        game.update()
+
+        game.render(screen)
+
+        if game.check_win():
+            show_message(screen, "You won!")
+            added_coins = 0
+            if not level_statuses[level_number]:
+                added_coins = level_number * COINS_PER_LEVEL
+                coins_status += added_coins
+            level_statuses[level_number] = True
+            if level_number < LEVEL_COUNT:
+                level_statuses[level_number + 1] = False
+            is_win = True
+            return level_over(level_number, is_win, added_coins)
+        if game.check_lose():
+            is_win = False
+            return level_over(level_number, is_win, None)
+
+        pygame.display.flip()
+        clock.tick(FPS)
+
+
+# конец уровня
+class LevelOver:
+    def __init__(self, level_number, is_win, added_coins=None):
+        self.level_number = level_number
+        self.coins = CoinsStatus((50, 40))
+        self.added_coins = added_coins
+
+        self.size = (500, 300)
+        self.image = pygame.Surface(self.size, pygame.SRCALPHA, 32)
+        fon = pygame.transform.scale(load_image('table.png'), self.size)
+        x = (WIDTH - fon.get_width()) // 2
+        y = (HEIGHT - fon.get_height()) // 2
+        self.pos = (x, y)
+        self.image.blit(fon, (0, 0))
+
+        self.buttons = {'again': Button((220 + x, 200 + y), (40, 40), ['restart_btn.png']),
+                        'menu': Button((100 + x, 200 + y), (40, 40), ['menu_btn.png']),
+                        'next': Button((340 + x, 200 + y), (40, 40), ['next_btn.png'])}
+        if level_number == LEVEL_COUNT or level_statuses[level_number + 1] is None:
+            self.buttons['next'] = None
+
+        if is_win:
+            message = f"Уровень {level_number} пройден!"
+        else:
+            message = f"Уровень {level_number} провален."
+
+        font = pygame.font.Font(None, 50)
+        text = font.render(message, True, (0, 0, 0))
+        x = (self.size[0] - text.get_width()) // 2
+        y = 90
+        self.image.blit(text, (x, y))
+
+        if added_coins:
+            font = pygame.font.Font(None, 20)
+            x += text.get_width()
+            y += text.get_height() + 10
+            text = font.render(f"+{self.added_coins}", True, (0, 0, 0))
+            x -= text.get_width() + 20
+            self.image.blit(text, (x, y))
+            self.image.blit(pygame.transform.scale(load_image('coins.png'),
+                                                   (20, 20)), (x + text.get_width() + 5, y))
+
+        self.coins.render(self.image)
+
+    def render(self, screen):
+        screen.blit(self.image, self.pos)
+
+        for btn in self.buttons:
+            if self.buttons[btn]:
+                self.buttons[btn].render(screen)
+
+    def get_click(self, pos):
+        if self.buttons['menu'].get_click(pos):
+            return LEVEL_COUNT + 1
+        elif self.buttons['again'].get_click(pos):
+            return LEVEL_COUNT + 2
+        elif self.buttons['next'] and self.buttons['next'].get_click(pos):
+            return LEVEL_COUNT + 3
+
+
+# конец уровня
+def level_over(level_number, is_win, added_coins=None):
+    all_sprites.empty()
+    screen.fill((0, 0, 0))
+
+    window = LevelOver(level_number, is_win, added_coins)
+
+    running = True
+    while running:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                terminate()
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                res = window.get_click(event.pos)
+                if res == LEVEL_COUNT + 1:
+                    return level_menu()
+                    # переход в меню с уровнями
+                elif res == LEVEL_COUNT + 2:
+                    return in_level(level_number)
+                    # перезапуск уровня
+                elif res == LEVEL_COUNT + 3:
+                    return in_level(level_number + 1)
+                    # следующий уровень
+
+        screen.fill((245, 245, 220))
+        window.render(screen)
+
+        pygame.display.flip()
+        clock.tick(FPS)
+
+
+def main():
+    screen.fill((0, 0, 0))
+
     level_menu()
 
 
