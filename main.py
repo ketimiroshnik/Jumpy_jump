@@ -107,13 +107,15 @@ COINS_PER_LEVEL = 10
 con = sqlite3.connect("players/players.db")
 cur = con.cursor()
 # имя игрока
-nickname = 'asdf'
+nickname = 'some'
 # id игрока
 player_id = cur.execute("SELECT id FROM players_info WHERE nickname = ?", (nickname,)).fetchone()[0]
 # состояние пройденности уровней
 level_statuses = {1: True, 2: True, 3: True, 4: False, 5: None, 6: None, 7: None, 8: None, 9: None, 10: None}
 # финансовое состояние игрока
 coins_status = cur.execute("SELECT money FROM players_info WHERE nickname = ?", (nickname,)).fetchone()[0]
+
+hero_name = 'hero1'
 
 
 def terminate():
@@ -374,12 +376,11 @@ class CoinsStatus:
         self.pos = pos
         self.icon_size = 20, 20
         self.text_size = 50, 20
-        self.image = pygame.Surface((self.icon_size[0] + self.text_size[0], self.icon_size[1] + self.text_size[1]),
-                                    pygame.SRCALPHA, 32)
-        self.image.blit(pygame.transform.scale(load_image('coins.png'), self.icon_size), (0, 0))
 
     def render(self, screen):
-        image = self.image
+        image = pygame.Surface((self.icon_size[0] + self.text_size[0], self.icon_size[1] + self.text_size[1]),
+                                    pygame.SRCALPHA, 32)
+        image.blit(pygame.transform.scale(load_image('coins.png'), self.icon_size), (0, 0))
         font = pygame.font.Font(None, 20)
         text = font.render(f"{coins_status}", True, (0, 0, 0))
         x = (self.text_size[0] - text.get_width()) // 2
@@ -505,7 +506,9 @@ class Shop:
         self.buttons = {'mainmenu': Button(pos=(220, 10), size=(150, 30), image_names=['mainmenu_btn.png']),
                         'previous': Button(pos=(50, 150), size=(60, 60), image_names=['previous_btn.png']),
                         'next': Button(pos=(500, 150), size=(60, 60), image_names=['next_btn.png']),
-                        'buy': Button((160, 100), size=(300, 200), image_names=['table.png'])}
+                        'menu': Button((530, 10), (45, 45), ['menu_btn.png']),
+                        'buy': None,
+                        'choose': None}
         self.coins = CoinsStatus((20, 20))
         self.image = HERO_IMAGES['hero1']['state']
 
@@ -514,9 +517,9 @@ class Shop:
             price = \
             cur.execute("SELECT price FROM store WHERE skin_id LIKE ?", ('hero{}'.format(self.pos),)).fetchone()[0]
             if price <= coins_status:
-                return (True, 'Можно купить', price)
-            return (False, 'Недостаточно монет')
-        return (False, 'Уже куплен')
+                return True, 'Можно купить', price
+            return None, 'Недостаточно монет'
+        return False, 'Уже куплен'
 
     def get_click(self, pos):
         if self.buttons['mainmenu'].get_click(pos):
@@ -525,30 +528,47 @@ class Shop:
             return 1
         if self.buttons['next'].get_click(pos):
             return 2
-        if self.buttons['buy'].get_click(pos):
+        if self.buttons['buy'] and self.buttons['buy'].get_click(pos):
             return 3
+        if self.buttons['choose'] and self.buttons['choose'].get_click(pos):
+            return 4
+        if self.buttons['menu'].get_click(pos):
+            return 5
 
     def render(self, screen):
+        if self.can_buy()[0] == False:
+            self.buttons['buy'] = None
+            self.buttons['choose'] = Button(pos=(260, 235), size=(80, 20), image_names=['choose_btn.png'])
+        else:
+            self.buttons['choose'] = None
+            self.buttons['buy'] = Button(pos=(260, 235), size=(80, 20), image_names=['buy_btn.png'])
+
+        screen.blit(pygame.transform.scale(load_image('table.png'), (300, 200)), (160, 100))
         for btn in self.buttons:
-            self.buttons[btn].render(screen)
+            if self.buttons[btn]:
+                self.buttons[btn].render(screen)
         font = pygame.font.Font(None, 20)
         text = font.render('Название: {}'.format(
             cur.execute("SELECT skin_name FROM store WHERE skin_id LIKE ?", ('hero{}'.format(self.pos),)).fetchone()[
-                0]), True, 'black')
+                0]), True, (0, 0, 0))
         screen.blit(text, (185, 140))
         text = font.render('Цена: {}'.format(
             cur.execute("SELECT price FROM store WHERE skin_id LIKE ?", ('hero{}'.format(self.pos),)).fetchone()[0]),
-                           True, 'black')
+                           True, (0, 0, 0))
         screen.blit(text, (185, 160))
-        text = font.render(self.can_buy()[1], True, 'black')
+        screen.blit(pygame.transform.scale(load_image('coins.png'), (10, 10)), (185 + text.get_width() + 2, 160))
+        text = font.render(self.can_buy()[1], True, (0, 0, 0))
         screen.blit(text, (185, 180))
+        if f"hero{self.pos}" == hero_name:
+            text = font.render('Выбран', True, (0, 0, 0))
+            screen.blit(text, (185, 200))
         screen.blit(self.image, (350, 175))
         self.coins.render(screen)
 
 
 # функция, реализующая магазин
 def shop_menu():
-    global coins_status
+    global coins_status, hero_name
     shop = Shop()
     running = True
     while running:
@@ -579,6 +599,10 @@ def shop_menu():
                         cur.execute("UPDATE players_info SET money = ? WHERE id = ?", (coins_status, player_id))
                         con.commit()
                     # купить предмет
+                if res == 4:
+                    hero_name = f"hero{shop.pos}"
+                if res == 5:
+                    return level_menu()
         screen.fill((245, 245, 220))
         shop.render(screen)
         pygame.display.flip()
@@ -587,15 +611,13 @@ def shop_menu():
 
 # процесс игры в уровне
 def in_level(level_number):
-    global level, hero, camera, game, coins_status
+    global level, hero, camera, game, coins_status, hero_name
 
     level_name = LEVEL_NAMES[level_number]
 
     with open(f'{MAPS_DIR}/{level_name}.txt') as file:
         free_tiles = list(map(int, file.readline().split()))
         target_tile = list(map(int, file.readline().split()))[0]
-
-    hero_name = random.choice(HERO_NAMES)
 
     all_sprites.empty()
     screen.fill((0, 0, 0))
