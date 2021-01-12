@@ -107,15 +107,34 @@ COINS_PER_LEVEL = 10
 con = sqlite3.connect("players/players.db")
 cur = con.cursor()
 # имя игрока
-nickname = 'some'
+nickname = 'asdf'
 # id игрока
 player_id = cur.execute("SELECT id FROM players_info WHERE nickname = ?", (nickname,)).fetchone()[0]
-# состояние пройденности уровней
-level_statuses = {1: True, 2: True, 3: True, 4: False, 5: None, 6: None, 7: None, 8: None, 9: None, 10: None}
 # финансовое состояние игрока
 coins_status = cur.execute("SELECT money FROM players_info WHERE nickname = ?", (nickname,)).fetchone()[0]
 
 hero_name = 'hero1'
+
+# состояние пройденности уровней
+level_statuses = {}
+levels_db = cur.execute("SELECT levels FROM players_info WHERE nickname = ?", (nickname,)).fetchone()[0].split(';')
+try:
+    levels_db = list(map(int, levels_db))
+except ValueError:
+    levels_db = []
+
+for e in levels_db:
+    level_statuses[e] = True
+
+if levels_db:
+    if max(levels_db) < LEVEL_COUNT:
+        level_statuses[max(levels_db) + 1] = False
+else:
+    level_statuses[1] = False
+
+for i in range(1, LEVEL_COUNT + 1):
+    if i not in level_statuses:
+        level_statuses[i] = None
 
 
 def terminate():
@@ -664,6 +683,9 @@ def in_level(level_number):
                 cur.execute("UPDATE players_info SET money = ? WHERE id = ?", (coins_status, player_id))
                 con.commit()
             level_statuses[level_number] = True
+            cur.execute("UPDATE players_info SET levels = ? WHERE id = ?",
+                        (';'.join([str(i) for i in level_statuses if level_statuses[i]]), player_id))
+            con.commit()
             if level_number < LEVEL_COUNT and not level_statuses[level_number + 1]:
                 level_statuses[level_number + 1] = False
             is_win = True
