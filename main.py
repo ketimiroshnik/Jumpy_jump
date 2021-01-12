@@ -4,6 +4,7 @@ import collections
 import random
 import sys
 import os
+import sqlite3
 
 FPS = 70
 SIZE = WIDTH, HEIGHT = 600, 350
@@ -19,6 +20,8 @@ tile_width, tile_height = 32, 32
 
 VH = 4
 VW = 4
+
+
 # количество пикселей передвижения за одни кадр по каждой оси
 # обязательно должно быть делителем размера тайла
 
@@ -100,27 +103,22 @@ player_group = pygame.sprite.Group()
 # множитель монет
 COINS_PER_LEVEL = 10
 
+# переменные для работы с БД
+con = sqlite3.connect("players/players.db")
+cur = con.cursor()
+# имя игрока
+nickname = 'asdf'
+# id игрока
+player_id = cur.execute("SELECT id FROM players_info WHERE nickname = ?", (nickname,)).fetchone()[0]
 # состояние пройденности уровней
 level_statuses = {1: True, 2: True, 3: True, 4: False, 5: None, 6: None, 7: None, 8: None, 9: None, 10: None}
 # финансовое состояние игрока
-coins_status = 20
+coins_status = cur.execute("SELECT money FROM players_info WHERE nickname = ?", (nickname,)).fetchone()[0]
 
 
 def terminate():
     pygame.quit()
     sys.exit()
-
-
-def show_message(screen, message):
-    font = pygame.font.Font(None, 50)
-    text = font.render(message, True, (50, 70, 0))
-    text_x = WIDTH // 2 - text.get_width() // 2
-    text_y = HEIGHT // 2 - text.get_height() // 2
-    text_w = text.get_width()
-    text_h = text.get_height()
-    pygame.draw.rect(screen, (200, 150, 50), (text_x - 10, text_y - 10,
-                                              text_w + 20, text_h + 20))
-    screen.blit(text, (text_x, text_y))
 
 
 class Player(pygame.sprite.Sprite):
@@ -146,6 +144,23 @@ class Player(pygame.sprite.Sprite):
 
     # сработал сигнал смены направления движения
     def press(self):
+        if self.rect.y % tile_height == 0:
+            y = self.rect.y // tile_height
+            x1 = (self.rect.x - self.dx) // tile_width
+            x2 = (self.rect.x - self.dx + tile_width - 1) // tile_width
+            if self.now == self.d['up']:
+                if not level.is_free((x1, y - 1)) or not level.is_free((x2, y - 1)):
+                    pass
+                else:
+                    return
+            else:
+                if not level.is_free((x1, y + 1)) or not level.is_free((x2, y + 1)):
+                    pass
+                else:
+                    return
+        else:
+            return
+
         if self.now == self.d['up']:
             self.now = self.d['down']
 
@@ -467,8 +482,8 @@ def level_menu():
                     return in_level(res)
                     # переход в уровень
                 if res == LEVEL_COUNT + 1:
+                    return shop_menu()
                     # переход в магазин
-                    pass
                 elif res == LEVEL_COUNT + 2:
                     # переход в главное меню
                     pass
@@ -477,6 +492,95 @@ def level_menu():
 
         menu.render(screen)
 
+        pygame.display.flip()
+        clock.tick(FPS)
+
+
+# магазин
+class Shop:
+    def __init__(self):
+        self.pos = 1
+        self.length = len(cur.execute("SELECT skin_id FROM store").fetchall())
+        self.skins = cur.execute("SELECT skins FROM players_info WHERE nickname = ?", (nickname,)).fetchone()[0]
+        self.buttons = {'mainmenu': Button(pos=(220, 10), size=(150, 30), image_names=['mainmenu_btn.png']),
+                        'previous': Button(pos=(50, 150), size=(60, 60), image_names=['previous_btn.png']),
+                        'next': Button(pos=(500, 150), size=(60, 60), image_names=['next_btn.png']),
+                        'buy': Button((160, 100), size=(300, 200), image_names=['table.png'])}
+        self.coins = CoinsStatus((20, 20))
+        self.image = HERO_IMAGES['hero1']['state']
+
+    def can_buy(self):
+        if 'hero{}'.format(self.pos) not in self.skins.split(';'):
+            price = \
+            cur.execute("SELECT price FROM store WHERE skin_id LIKE ?", ('hero{}'.format(self.pos),)).fetchone()[0]
+            if price <= coins_status:
+                return (True, 'Можно купить', price)
+            return (False, 'Недостаточно монет')
+        return (False, 'Уже куплен')
+
+    def get_click(self, pos):
+        if self.buttons['mainmenu'].get_click(pos):
+            pass
+        if self.buttons['previous'].get_click(pos):
+            return 1
+        if self.buttons['next'].get_click(pos):
+            return 2
+        if self.buttons['buy'].get_click(pos):
+            return 3
+
+    def render(self, screen):
+        for btn in self.buttons:
+            self.buttons[btn].render(screen)
+        font = pygame.font.Font(None, 20)
+        text = font.render('Название: {}'.format(
+            cur.execute("SELECT skin_name FROM store WHERE skin_id LIKE ?", ('hero{}'.format(self.pos),)).fetchone()[
+                0]), True, 'black')
+        screen.blit(text, (185, 140))
+        text = font.render('Цена: {}'.format(
+            cur.execute("SELECT price FROM store WHERE skin_id LIKE ?", ('hero{}'.format(self.pos),)).fetchone()[0]),
+                           True, 'black')
+        screen.blit(text, (185, 160))
+        text = font.render(self.can_buy()[1], True, 'black')
+        screen.blit(text, (185, 180))
+        screen.blit(self.image, (350, 175))
+        self.coins.render(screen)
+
+
+# функция, реализующая магазин
+def shop_menu():
+    global coins_status
+    shop = Shop()
+    running = True
+    while running:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                running = False
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                res = shop.get_click(event.pos)
+                if res == 0:
+                    return
+                    # вернуться в меню
+                if res == 1:
+                    if shop.pos > 1:
+                        shop.pos -= 1
+                        shop.image = HERO_IMAGES['hero{}'.format(shop.pos)]['state']
+                    # предыдущий предмет
+                if res == 2:
+                    if shop.pos < shop.length:
+                        shop.pos += 1
+                        shop.image = HERO_IMAGES['hero{}'.format(shop.pos)]['state']
+                    # следующий предмет
+                if res == 3:
+                    price = shop.can_buy()
+                    if price[0]:
+                        coins_status -= price[2]
+                        shop.skins += ';{}'.format('hero{}'.format(shop.pos))
+                        cur.execute("UPDATE players_info SET skins = ? WHERE id = ?", (shop.skins, player_id))
+                        cur.execute("UPDATE players_info SET money = ? WHERE id = ?", (coins_status, player_id))
+                        con.commit()
+                    # купить предмет
+        screen.fill((245, 245, 220))
+        shop.render(screen)
         pygame.display.flip()
         clock.tick(FPS)
 
@@ -531,13 +635,14 @@ def in_level(level_number):
         game.render(screen)
 
         if game.check_win():
-            show_message(screen, "You won!")
             added_coins = 0
             if not level_statuses[level_number]:
                 added_coins = level_number * COINS_PER_LEVEL
                 coins_status += added_coins
+                cur.execute("UPDATE players_info SET money = ? WHERE id = ?", (coins_status, player_id))
+                con.commit()
             level_statuses[level_number] = True
-            if level_number < LEVEL_COUNT:
+            if level_number < LEVEL_COUNT and not level_statuses[level_number + 1]:
                 level_statuses[level_number + 1] = False
             is_win = True
             return level_over(level_number, is_win, added_coins)
