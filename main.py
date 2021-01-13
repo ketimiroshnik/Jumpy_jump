@@ -46,6 +46,7 @@ def load_image(name, colorkey=None):
 LEVEL_NAMES = {1: 'example_map_2', 2: 'example_map', 3: 'example_map_2', 4: 'example_map',
                5: 'example_map_2', 6: 'example_map', 7: 'example_map_2', 8: 'example_map',
                9: 'example_map_2', 10: 'example_map'}
+
 LEVEL_COUNT = 10
 
 HERO_NAMES = ['hero1', 'hero2', 'hero3']
@@ -873,6 +874,7 @@ class InputBox:
     def __init__(self, pos, hide, limiter):
         self.text = ''
         self.rect = pygame.Rect((pos[0], pos[1], 155, 20))
+        self.image = pygame.transform.scale(load_image('line.png'), (155, 20))
         self.pos = pos
         self.can_input = False
         self.hide = hide
@@ -892,7 +894,8 @@ class InputBox:
                 self.text += event.unicode
 
     def render(self, screen):
-        pygame.draw.rect(screen, (0, 0, 0), self.rect, 2)
+        # pygame.draw.rect(screen, (0, 0, 0), self.rect, 2)
+        screen.blit(self.image, self.pos)
         font = pygame.font.Font(None, 20)
         if self.hide:
             text = font.render(len(self.text) * '*', True, (0, 0, 0))
@@ -950,9 +953,9 @@ class EnterToGame:
         self.buttons = {'back': Button(pos=(500, 10), size=(60, 60), image_names=['restart_btn.png'])}
         self.errormessage = ('', (0, 0))
         if newbie:
-            self.buttons['action'] = Button(pos=(152, 205), size=(263, 59), image_names=['signin_btn.png'])
+            self.buttons['action'] = Button(pos=(185, 200), size=(200, 45), image_names=['signup_btn.png'])
         else:
-            self.buttons['action'] = Button(pos=(218, 200), size=(129, 48), image_names=['signup_btn.png'])
+            self.buttons['action'] = Button(pos=(185, 200), size=(200, 45), image_names=['signin_btn.png'])
         self.newbie = newbie
 
     def get_click(self, pos):
@@ -1029,13 +1032,13 @@ class EnterToGame:
 # Класс, реализуюший выбор регистрации или входа в аккаунт
 class Choose:
     def __init__(self):
-        self.buttons = {'sign_in': Button(pos=(172, 110), size=(263, 59), image_names=['signin_btn.png']),
-                        'sign_up': Button(pos=(232, 185), size=(129, 48), image_names=['signup_btn.png'])}
+        self.buttons = {'sign_up': Button(pos=((WIDTH - 200) // 2, 110), size=(200, 45), image_names=['signup_btn.png']),
+                        'sign_in': Button(pos=((WIDTH - 200) // 2, 185), size=(200, 45), image_names=['signin_btn.png'])}
 
     def get_click(self, pos):
-        if self.buttons['sign_in'].get_click(pos):
-            return 1
         if self.buttons['sign_up'].get_click(pos):
+            return 1
+        if self.buttons['sign_in'].get_click(pos):
             return 2
 
     def render(self, screen):
@@ -1085,11 +1088,13 @@ class MainMenu:
     def render(self, screen):
         for btn in self.buttons:
             self.buttons[btn].render(screen)
-
+        '''
         font = pygame.font.Font(None, 50)
         text = font.render('Главное меню', True, (100, 0, 0))
-        x = (WIDTH - text.get_width()) // 2
-        screen.blit(text, (x, 20))
+        '''
+        image = pygame.transform.scale(load_image('mainmenu_btn.png'), (200, 45))
+        x = (WIDTH - image.get_width()) // 2
+        screen.blit(image, (x, 20))
 
     def get_click(self, pos):
         if self.buttons['rating'].get_click(pos):
