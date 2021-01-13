@@ -789,10 +789,113 @@ def level_over(level_number, is_win, added_coins=None):
         clock.tick(FPS)
 
 
+class ScoreTable:
+    def __init__(self):
+        self.buttons = {'mainmenu': Button(pos=(10, 300), size=(45, 45), image_names=['previous_btn.png'])}
+        self.best = []
+        db = list(cur.execute("SELECT nickname, levels FROM players_info").fetchall())
+        score = []
+        for i in range(len(db)):
+            if not db[i][1]:
+                score.append((db[i][0], 0))
+            else:
+                score.append((db[i][0], len(db[i][1].split(';'))))
+        score = sorted(score, key=lambda x: x[1])[::-1]
+        res = sorted(list(set(list(map(lambda x: x[1], score)))))[::-1]
+        i = 0
+        while len(self.best) < 5 and i < len(res):
+            if res[i] != 0:
+                a = list(filter(lambda x: x[1] == res[i], score))
+                self.best.extend(a)
+            i += 1
+
+    def render(self, screen):
+        font = pygame.font.Font(None, 40)
+        text = font.render('Таблица рекордов', True, (100, 100, 100))
+        x = (WIDTH - text.get_width()) // 2
+        screen.blit(text, (x, 10))
+
+        if not self.best:
+            font = pygame.font.Font(None, 25)
+            text = font.render('Здесь пока нет рекордов', True, (150, 150, 150))
+            x = (WIDTH - text.get_width()) // 2
+            screen.blit(text, (x, 100))
+            return
+
+        width_col0, width_col1, width_col2 = 100, 150, None
+        left, top = 60, 70
+        delta_y = 20
+        y = top
+
+        font = pygame.font.Font(None, 25)
+        text = font.render('Номер', True, (0, 0, 0))
+        x = (width_col0 - text.get_width()) // 2
+        screen.blit(text, (x + left, y))
+        text = font.render('Ник', True, (0, 0, 0))
+        x = (width_col1 - text.get_width()) // 2
+        screen.blit(text, (x + left + width_col0, y))
+        font = pygame.font.Font(None, 20)
+        text = font.render('Количество пройденных уровней', True, (0, 0, 0))
+        screen.blit(text, (left + width_col0 + width_col1, y))
+        width_col2 = text.get_width()
+        y += text.get_height() + delta_y
+
+        len_line_x = width_col0 + width_col1 + width_col2 + 5
+        pygame.draw.line(screen, (0, 0, 0), (left, top - 5), (left + len_line_x, top - 5))
+        pygame.draw.line(screen, (0, 0, 0), (left, y - delta_y // 2), (left + len_line_x, y - delta_y // 2))
+
+        font = pygame.font.Font(None, 25)
+        i = 1
+        for nick, count in self.best:
+            text = font.render(str(i), True, (50, 50, 50))
+            screen.blit(text, (left + 30, y))
+            text = font.render(nick, True, (50, 50, 50))
+            screen.blit(text, (left + width_col0 + 10, y))
+            text = font.render(str(count), True, (50, 50, 50))
+            screen.blit(text, (left + width_col0 + width_col1 + 10, y))
+            y += text.get_height() + delta_y
+            pygame.draw.line(screen, (30, 30, 30), (left, y - delta_y // 2), (left + len_line_x, y - delta_y // 2))
+            if y + text.get_height() > HEIGHT:
+                break
+            i += 1
+
+        for btn in self.buttons:
+            self.buttons[btn].render(screen)
+
+    def get_click(self, pos):
+        if self.buttons['mainmenu'].get_click(pos):
+            return 1
+
+
+def score_table():
+    screen.fill((245, 245, 220))
+
+    table = ScoreTable()
+
+    running = True
+    while running:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                terminate()
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                res = table.get_click(event.pos)
+                if res == 1:
+                    # переход в главное меню
+                    pass
+
+        screen.fill((245, 245, 220))
+        table.render(screen)
+
+        pygame.display.flip()
+        clock.tick(FPS)
+
+
 def main():
     screen.fill((0, 0, 0))
 
     level_menu()
+
+    # score_table()
 
 
 if __name__ == '__main__':
