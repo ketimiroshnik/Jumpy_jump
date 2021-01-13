@@ -24,6 +24,10 @@ VW = 4
 # обязательно должно быть делителем размера тайла
 
 
+pygame.mixer.music.load('music/fon1.mp3')
+pygame.mixer.music.play(-1)
+
+
 def load_image(name, colorkey=None):
     fullname = os.path.join(IMAGES_DIR, name)
     if not os.path.isfile(fullname):
@@ -179,6 +183,9 @@ class Player(pygame.sprite.Sprite):
                     return
         else:
             return
+
+        effect = pygame.mixer.Sound('music/space_btn.mp3')
+        effect.play()
 
         if self.now == self.d['up']:
             self.now = self.d['down']
@@ -396,7 +403,7 @@ class CoinsStatus:
 
     def render(self, screen):
         image = pygame.Surface((self.icon_size[0] + self.text_size[0], self.icon_size[1] + self.text_size[1]),
-                                    pygame.SRCALPHA, 32)
+                               pygame.SRCALPHA, 32)
         image.blit(pygame.transform.scale(load_image('coins.png'), self.icon_size), (0, 0))
         font = pygame.font.Font(None, 20)
         text = font.render(f"{coins_status}", True, (0, 0, 0))
@@ -497,6 +504,8 @@ def level_menu():
             if event.type == pygame.MOUSEBUTTONDOWN:
                 res = menu.get_click(event.pos)
                 if res in range(1, LEVEL_COUNT + 1):
+                    effect = pygame.mixer.Sound('music/choose_level.mp3')
+                    effect.play()
                     return in_level(res)
                     # переход в уровень
                 if res == LEVEL_COUNT + 1:
@@ -532,7 +541,7 @@ class Shop:
     def can_buy(self):
         if 'hero{}'.format(self.pos) not in self.skins.split(';'):
             price = \
-            cur.execute("SELECT price FROM store WHERE skin_id LIKE ?", ('hero{}'.format(self.pos),)).fetchone()[0]
+                cur.execute("SELECT price FROM store WHERE skin_id LIKE ?", ('hero{}'.format(self.pos),)).fetchone()[0]
             if price <= coins_status:
                 return True, 'Можно купить', price
             return None, 'Недостаточно монет'
@@ -571,7 +580,7 @@ class Shop:
         screen.blit(text, (185, 140))
         text = font.render('Цена: {}'.format(
             cur.execute("SELECT price FROM store WHERE skin_id LIKE ?", ('hero{}'.format(self.pos),)).fetchone()[0]),
-                           True, (0, 0, 0))
+            True, (0, 0, 0))
         screen.blit(text, (185, 160))
         screen.blit(pygame.transform.scale(load_image('coins.png'), (10, 10)), (185 + text.get_width() + 2, 160))
         text = font.render(self.can_buy()[1], True, (0, 0, 0))
@@ -615,9 +624,16 @@ def shop_menu():
                         cur.execute("UPDATE players_info SET skins = ? WHERE id = ?", (shop.skins, player_id))
                         cur.execute("UPDATE players_info SET money = ? WHERE id = ?", (coins_status, player_id))
                         con.commit()
+                        effect = pygame.mixer.Sound('music/buy.mp3')
+                        effect.play()
+                    elif price[0] is None:
+                        effect = pygame.mixer.Sound('music/cannotbuy.mp3')
+                        effect.play()
                     # купить предмет
                 if res == 4:
                     hero_name = f"hero{shop.pos}"
+                    effect = pygame.mixer.Sound('music/choose_hero.mp3')
+                    effect.play()
                 if res == 5:
                     return level_menu()
         screen.fill((245, 245, 220))
@@ -807,6 +823,12 @@ def level_over(level_number, is_win, added_coins=None):
     screen.fill((0, 0, 0))
 
     window = LevelOver(level_number, is_win, added_coins)
+
+    if is_win:
+        effect = pygame.mixer.Sound('music/win.mp3')
+    else:
+        effect = pygame.mixer.Sound('music/lose.mp3')
+    effect.play()
 
     i = 0
     running = True
