@@ -20,8 +20,6 @@ tile_width, tile_height = 32, 32
 
 VH = 4
 VW = 4
-
-
 # количество пикселей передвижения за одни кадр по каждой оси
 # обязательно должно быть делителем размера тайла
 
@@ -107,7 +105,7 @@ COINS_PER_LEVEL = 10
 con = sqlite3.connect("players/players.db")
 cur = con.cursor()
 # имя игрока
-nickname = 'asdf'
+nickname = 'player3'
 # id игрока
 player_id = cur.execute("SELECT id FROM players_info WHERE nickname = ?", (nickname,)).fetchone()[0]
 # финансовое состояние игрока
@@ -698,6 +696,47 @@ def in_level(level_number):
         clock.tick(FPS)
 
 
+class Particle(pygame.sprite.Sprite):
+    # сгенерируем частицы разного размера
+    fire = [load_image("star.png")]
+    for scale in (5, 10, 20):
+        fire.append(pygame.transform.scale(fire[0], (scale, scale)))
+
+    def __init__(self, pos, dx, dy):
+        super().__init__(all_sprites)
+        self.image = random.choice(self.fire)
+        self.rect = self.image.get_rect()
+
+        # у каждой частицы своя скорость — это вектор
+        self.velocity = [dx, dy]
+        # и свои координаты
+        self.rect.x, self.rect.y = pos
+
+        # гравитация будет одинаковой (значение константы)
+        self.gravity = 0.1
+
+    def update(self):
+        # применяем гравитационный эффект:
+        # движение с ускорением под действием гравитации
+        self.velocity[1] += self.gravity
+        # перемещаем частицу
+        self.rect.x += self.velocity[0]
+        self.rect.y += self.velocity[1]
+        # убиваем, если частица ушла за экран
+        screen_rect = (0, 0, WIDTH, HEIGHT)
+        if not self.rect.colliderect(screen_rect):
+            self.kill()
+
+
+def create_particles(position):
+    # количество создаваемых частиц
+    particle_count = 20
+    # возможные скорости
+    numbers = range(-5, 6)
+    for _ in range(particle_count):
+        Particle(position, random.choice(numbers), random.choice(numbers))
+
+
 # конец уровня
 class LevelOver:
     def __init__(self, level_number, is_win, added_coins=None):
@@ -748,6 +787,7 @@ class LevelOver:
         for btn in self.buttons:
             if self.buttons[btn]:
                 self.buttons[btn].render(screen)
+        all_sprites.draw(screen)
 
     def get_click(self, pos):
         if self.buttons['menu'].get_click(pos):
@@ -757,6 +797,9 @@ class LevelOver:
         elif self.buttons['next'] and self.buttons['next'].get_click(pos):
             return LEVEL_COUNT + 3
 
+    def update(self):
+        all_sprites.update()
+
 
 # конец уровня
 def level_over(level_number, is_win, added_coins=None):
@@ -765,6 +808,7 @@ def level_over(level_number, is_win, added_coins=None):
 
     window = LevelOver(level_number, is_win, added_coins)
 
+    i = 0
     running = True
     while running:
         for event in pygame.event.get():
@@ -783,6 +827,12 @@ def level_over(level_number, is_win, added_coins=None):
                     # следующий уровень
 
         screen.fill((245, 245, 220))
+        window.update()
+
+        if i % 50 == 0 and is_win:
+            create_particles((random.randrange(0, WIDTH - 50), random.randrange(0, HEIGHT - 50)))
+        i += 1
+
         window.render(screen)
 
         pygame.display.flip()
