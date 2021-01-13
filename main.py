@@ -877,6 +877,7 @@ class InputBox:
         self.can_input = False
         self.hide = hide
         self.limiter = limiter
+        self.i = 0
 
     def get_click(self, pos):
         self.can_input = False
@@ -897,7 +898,12 @@ class InputBox:
             text = font.render(len(self.text) * '*', True, (0, 0, 0))
         else:
             text = font.render(self.text, True, (0, 0, 0))
-        screen.blit(text, (self.pos[0] + 2, self.pos[1] + 3))
+        screen.blit(text, (self.pos[0] + 5, self.pos[1] + 3))
+
+        if self.i % 70 in range(0, 20) and self.can_input:
+            x = self.pos[0] + text.get_width() + 6
+            pygame.draw.line(screen, (0, 0, 0), (x, self.pos[1] + 5), (x, self.pos[1] + 5 + text.get_height() - 4), 1)
+        self.i += 1
 
 
 # Функция, реализующая регистрацию и вход в аккаунт
