@@ -23,7 +23,6 @@ VW = 4
 # количество пикселей передвижения за одни кадр по каждой оси
 # обязательно должно быть делителем размера тайла
 
-
 pygame.mixer.music.load('music/fon1.mp3')
 pygame.mixer.music.play(-1)
 
@@ -105,38 +104,43 @@ player_group = pygame.sprite.Group()
 # множитель монет
 COINS_PER_LEVEL = 10
 
+nickname = ''
+player_id = 0
+coins_status = 0
+hero_name = ''
+# состояние пройденности уровней
+level_statuses = {}
+levels_db = []
+
 # переменные для работы с БД
 con = sqlite3.connect("players/players.db")
 cur = con.cursor()
-# имя игрока
-nickname = 'player3'
-# id игрока
-player_id = cur.execute("SELECT id FROM players_info WHERE nickname = ?", (nickname,)).fetchone()[0]
-# финансовое состояние игрока
-coins_status = cur.execute("SELECT money FROM players_info WHERE nickname = ?", (nickname,)).fetchone()[0]
 
-hero_name = 'hero1'
 
-# состояние пройденности уровней
-level_statuses = {}
-levels_db = cur.execute("SELECT levels FROM players_info WHERE nickname = ?", (nickname,)).fetchone()[0].split(';')
-try:
-    levels_db = list(map(int, levels_db))
-except ValueError:
-    levels_db = []
+def player_info(player):
+    global nickname, player_id, coins_status, hero_name, level_statuses, levels_db
+    nickname = player
+    # id игрока
+    player_id = cur.execute("SELECT id FROM players_info WHERE nickname = ?", (nickname,)).fetchone()[0]
+    # финансовое состояние игрока
+    coins_status = cur.execute("SELECT money FROM players_info WHERE nickname = ?", (nickname,)).fetchone()[0]
+    hero_name = 'hero1'
+    levels_db = cur.execute("SELECT levels FROM players_info WHERE nickname = ?", (nickname,)).fetchone()[0].split(';')
+    try:
+        levels_db = list(map(int, levels_db))
+    except ValueError:
+        levels_db = []
+    for e in levels_db:
+        level_statuses[e] = True
+    if levels_db:
+        if max(levels_db) < LEVEL_COUNT:
+            level_statuses[max(levels_db) + 1] = False
+    else:
+        level_statuses[1] = False
 
-for e in levels_db:
-    level_statuses[e] = True
-
-if levels_db:
-    if max(levels_db) < LEVEL_COUNT:
-        level_statuses[max(levels_db) + 1] = False
-else:
-    level_statuses[1] = False
-
-for i in range(1, LEVEL_COUNT + 1):
-    if i not in level_statuses:
-        level_statuses[i] = None
+    for i in range(1, LEVEL_COUNT + 1):
+        if i not in level_statuses:
+            level_statuses[i] = None
 
 
 def terminate():
@@ -512,8 +516,8 @@ def level_menu():
                     return shop_menu()
                     # переход в магазин
                 elif res == LEVEL_COUNT + 2:
+                    return mainmenu()
                     # переход в главное меню
-                    pass
 
         screen.fill((245, 245, 220))
 
@@ -549,7 +553,7 @@ class Shop:
 
     def get_click(self, pos):
         if self.buttons['mainmenu'].get_click(pos):
-            pass
+            return 0
         if self.buttons['previous'].get_click(pos):
             return 1
         if self.buttons['next'].get_click(pos):
@@ -604,7 +608,7 @@ def shop_menu():
             if event.type == pygame.MOUSEBUTTONDOWN:
                 res = shop.get_click(event.pos)
                 if res == 0:
-                    return
+                    return mainmenu()
                     # вернуться в меню
                 if res == 1:
                     if shop.pos > 1:
@@ -634,8 +638,10 @@ def shop_menu():
                     hero_name = f"hero{shop.pos}"
                     effect = pygame.mixer.Sound('music/choose_hero.mp3')
                     effect.play()
+                    # выбрать скин
                 if res == 5:
                     return level_menu()
+                    # вернуться к выбору уровней
         screen.fill((245, 245, 220))
         shop.render(screen)
         pygame.display.flip()
@@ -803,6 +809,7 @@ class LevelOver:
         for btn in self.buttons:
             if self.buttons[btn]:
                 self.buttons[btn].render(screen)
+
         all_sprites.draw(screen)
 
     def get_click(self, pos):
@@ -823,6 +830,7 @@ def level_over(level_number, is_win, added_coins=None):
     screen.fill((0, 0, 0))
 
     window = LevelOver(level_number, is_win, added_coins)
+    i = 0
 
     if is_win:
         effect = pygame.mixer.Sound('music/win.mp3')
@@ -830,7 +838,6 @@ def level_over(level_number, is_win, added_coins=None):
         effect = pygame.mixer.Sound('music/lose.mp3')
     effect.play()
 
-    i = 0
     running = True
     while running:
         for event in pygame.event.get():
@@ -849,14 +856,299 @@ def level_over(level_number, is_win, added_coins=None):
                     # следующий уровень
 
         screen.fill((245, 245, 220))
-        window.update()
 
+        window.update()
         if i % 50 == 0 and is_win:
             create_particles((random.randrange(0, WIDTH - 50), random.randrange(0, HEIGHT - 50)))
         i += 1
 
         window.render(screen)
 
+        pygame.display.flip()
+        clock.tick(FPS)
+
+
+# Строка ввода
+class InputBox:
+    def __init__(self, pos, hide, limiter):
+        self.text = ''
+        self.rect = pygame.Rect((pos[0], pos[1], 155, 20))
+        self.pos = pos
+        self.can_input = False
+        self.hide = hide
+        self.limiter = limiter
+
+    def get_click(self, pos):
+        self.can_input = False
+        if self.rect.collidepoint(pos):
+            self.can_input = True
+
+    def input(self, event):
+        if self.can_input:
+            if event.key == pygame.K_BACKSPACE:
+                self.text = self.text[:-1]
+            elif len(self.text) < self.limiter[1]:
+                self.text += event.unicode
+
+    def render(self, screen):
+        pygame.draw.rect(screen, (0, 0, 0), self.rect, 2)
+        font = pygame.font.Font(None, 20)
+        if self.hide:
+            text = font.render(len(self.text) * '*', True, (0, 0, 0))
+        else:
+            text = font.render(self.text, True, (0, 0, 0))
+        screen.blit(text, (self.pos[0] + 2, self.pos[1] + 3))
+
+
+# Функция, реализующая регистрацию и вход в аккаунт
+def entertogame(newbie):
+    enter = EnterToGame(newbie)
+    running = True
+    while running:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                running = False
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                res = enter.get_click(event.pos)
+                if res == 1:
+                    return choose_menu()
+                    # Возврат к выбору действия
+                if res == 2:
+                    res = enter.check()
+                    if res and newbie:
+                        cur.execute(
+                            "INSERT INTO players_info(nickname, password, money, skins, levels) VALUES(?, ?, ?, ?, ?)",
+                            (enter.input_boxes['nickname'].text,
+                             enter.input_boxes['password'].text, 0, 'hero1', ''))
+                        con.commit()
+                        player_info(enter.input_boxes['nickname'].text)
+                        return mainmenu()
+                        # переход в главное меню
+                    elif res and not newbie:
+                        player_info(enter.input_boxes['nickname'].text)
+                        return mainmenu()
+                        # переход в главное меню
+            if event.type == pygame.KEYDOWN:
+                enter.input(event)
+        screen.fill((245, 245, 220))
+        enter.render(screen)
+        pygame.display.flip()
+        clock.tick(FPS)
+
+
+# Класс, реализующий регистрацию и вход в аккаунт
+class EnterToGame:
+    def __init__(self, newbie):
+        self.input_boxes = {'nickname': InputBox(pos=(210, 130), hide=False, limiter=(8, 16)),
+                            'password': InputBox(pos=(210, 170), hide=True, limiter=(4, 8))}
+        self.buttons = {'back': Button(pos=(500, 10), size=(60, 60), image_names=['restart_btn.png'])}
+        self.errormessage = ('', (0, 0))
+        if newbie:
+            self.buttons['action'] = Button(pos=(152, 205), size=(263, 59), image_names=['signin_btn.png'])
+        else:
+            self.buttons['action'] = Button(pos=(218, 200), size=(129, 48), image_names=['signup_btn.png'])
+        self.newbie = newbie
+
+    def get_click(self, pos):
+        for input_box in self.input_boxes:
+            self.input_boxes[input_box].get_click(pos)
+        if self.buttons['back'].get_click(pos):
+            return 1
+        if self.buttons['action'].get_click(pos):
+            return 2
+
+    def clear(self):
+        self.input_boxes = {'nickname': InputBox(pos=(210, 130), hide=False, limiter=(8, 16)),
+                            'password': InputBox(pos=(210, 170), hide=True, limiter=(4, 8))}
+
+    def input(self, event):
+        for input_box in self.input_boxes:
+            self.input_boxes[input_box].input(event)
+
+    def render(self, screen):
+        for input_box in self.input_boxes:
+            self.input_boxes[input_box].render(screen)
+        font = pygame.font.Font(None, 20)
+        text = font.render('Введите логин и пароль', True, (0, 0, 0))
+        screen.blit(text, (205, 100))
+        text = font.render('Логин (A-z; 0-9; _); 8-16:', True, (0, 0, 0))
+        screen.blit(text, (54, 133))
+        text = font.render('Пароль (A-z; 0-9); 4-8:', True, (0, 0, 0))
+        screen.blit(text, (68, 173))
+        for button in self.buttons:
+            self.buttons[button].render(screen)
+        if len(self.errormessage[0]) > 0:
+            text = font.render(self.errormessage[0], True, (255, 0, 0))
+            screen.blit(text, (self.errormessage[1][0], self.errormessage[1][1]))
+
+    def check(self):
+        if self.newbie:
+            for input_box in self.input_boxes:
+                if not self.input_boxes[input_box].limiter[0] <= len(self.input_boxes[input_box].text) <= \
+                       self.input_boxes[input_box].limiter[1]:
+                    self.errormessage = ('Ошибка в длине ввода', (207, 275))
+                    self.clear()
+                    return False
+            for i in self.input_boxes['nickname'].text:
+                if i not in 'qwertyuiopasdfghjklzxcvbnm0123456789_':
+                    self.errormessage = ('В логине имеются символы, отличные от указанных', (130, 275))
+                    self.clear()
+                    return False
+            for i in self.input_boxes['password'].text:
+                if i not in 'qwertyuiopasdfghjklzxcvbnm0123456789':
+                    self.errormessage = ('В пароле имеются символы, отличные от указанных', (130, 275))
+                    self.clear()
+                    return False
+            nicknames = cur.execute("SELECT nickname FROM players_info").fetchall()
+            for i in nicknames:
+                if self.input_boxes['nickname'].text == i[0]:
+                    self.errormessage = ('Логин занят', (245, 275))
+                    self.clear()
+                    return False
+            return True
+        else:
+            try:
+                password = cur.execute("SELECT password FROM players_info WHERE nickname=?",
+                                       (self.input_boxes['nickname'].text,)).fetchone()[0]
+                if password == self.input_boxes['password'].text:
+                    return True
+                self.errormessage = ('Введен неверный пароль', (195, 255))
+                self.clear()
+            except TypeError:
+                self.errormessage = ('Введен неверный логин', (205, 255))
+                self.clear()
+            return False
+
+
+# Класс, реализуюший выбор регистрации или входа в аккаунт
+class Choose:
+    def __init__(self):
+        self.buttons = {'sign_in': Button(pos=(172, 110), size=(263, 59), image_names=['signin_btn.png']),
+                        'sign_up': Button(pos=(232, 185), size=(129, 48), image_names=['signup_btn.png'])}
+
+    def get_click(self, pos):
+        if self.buttons['sign_in'].get_click(pos):
+            return 1
+        if self.buttons['sign_up'].get_click(pos):
+            return 2
+
+    def render(self, screen):
+        font = pygame.font.Font(None, 20)
+        text = font.render('Добро пожаловать!', True, (0, 0, 0))
+        screen.blit(text, (233, 75))
+        text = font.render('Если вы здесь впервые, то можете', True, (0, 0, 0))
+        screen.blit(text, (190, 95))
+        text = font.render('Иначе можете', True, (0, 0, 0))
+        screen.blit(text, (250, 170))
+        for btn in self.buttons:
+            self.buttons[btn].render(screen)
+
+        # Выбор регистрации или входа в аккаунт
+
+
+def choose_menu():
+    choose = Choose()
+    running = True
+    while running:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                running = False
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                res = choose.get_click(event.pos)
+                if res == 1:
+                    return entertogame(True)
+                    # Регистрация
+                if res == 2:
+                    return entertogame(False)
+                    # Вход в аккаунт
+        screen.fill((245, 245, 220))
+        choose.render(screen)
+        pygame.display.flip()
+        clock.tick(FPS)
+
+
+# Класс главного меню
+class MainMenu:
+    def __init__(self):
+        self.buttons = {'levels': TextButton(pos=(180, 85), image='menu_btn.png', text='Выбор уровня'),
+                        'shop': TextButton(pos=(180, 135), image='shop_btn.png', text='Магазин'),
+                        'rating': TextButton(pos=(180, 185), image='rating_btn.png', text='Рейтинг'),
+                        'change': TextButton(pos=(180, 235), image='restart_btn.png', text='Сменить пользователя'),
+                        'exit': TextButton(pos=(180, 285), image='close_btn.png', text='Выйти')}
+
+    def render(self, screen):
+        for btn in self.buttons:
+            self.buttons[btn].render(screen)
+
+        font = pygame.font.Font(None, 50)
+        text = font.render('Главное меню', True, (100, 0, 0))
+        x = (WIDTH - text.get_width()) // 2
+        screen.blit(text, (x, 20))
+
+    def get_click(self, pos):
+        if self.buttons['rating'].get_click(pos):
+            return 1
+        if self.buttons['shop'].get_click(pos):
+            return 2
+        if self.buttons['levels'].get_click(pos):
+            return 3
+        if self.buttons['change'].get_click(pos):
+            return 4
+        if self.buttons['exit'].get_click(pos):
+            return 5
+
+
+# Кнопка с текстом
+class TextButton:
+    def __init__(self, pos, image, text):
+        self.text = text
+        self.pos = pos
+        font = pygame.font.Font(None, 40)
+        text = font.render(self.text, True, (0, 0, 0))
+        self.width = text.get_width()
+        self.height = text.get_height()
+        self.image = pygame.Surface((self.height + self.width + 2, self.height),
+                                    pygame.SRCALPHA, 32)
+        self.image.blit(pygame.transform.scale(load_image(image), (self.height, self.height)), (0, 0))
+        self.image.blit(text, (self.height + 2, 0))
+        self.rect = pygame.Rect(pos[0], pos[1], self.width + self.height, self.height)
+
+    def render(self, screen):
+        screen.blit(self.image, self.pos)
+
+    def get_click(self, pos):
+        if self.rect.collidepoint(pos):
+            return True
+        return False
+
+
+# Главное меню
+def mainmenu():
+    menu = MainMenu()
+    running = True
+    while running:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                running = False
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                res = menu.get_click(event.pos)
+                if res == 1:
+                    return score_table()
+                    # Рейтинг
+                if res == 2:
+                    return shop_menu()
+                    # Магазин
+                if res == 3:
+                    return level_menu()
+                    # Выбор уровня
+                if res == 4:
+                    return choose_menu()
+                    # Смена пользователя
+                if res == 5:
+                    terminate()
+                    # Выйти из игры
+        screen.fill((245, 245, 220))
+        menu.render(screen)
         pygame.display.flip()
         clock.tick(FPS)
 
@@ -952,8 +1244,8 @@ def score_table():
             if event.type == pygame.MOUSEBUTTONDOWN:
                 res = table.get_click(event.pos)
                 if res == 1:
+                    return mainmenu()
                     # переход в главное меню
-                    pass
 
         screen.fill((245, 245, 220))
         table.render(screen)
@@ -965,9 +1257,7 @@ def score_table():
 def main():
     screen.fill((0, 0, 0))
 
-    level_menu()
-
-    # score_table()
+    choose_menu()
 
 
 if __name__ == '__main__':
