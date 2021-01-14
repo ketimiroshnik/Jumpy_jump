@@ -657,6 +657,7 @@ class Shop:
             True, font_color)
         screen.blit(text, (185, 160))
         screen.blit(pygame.transform.scale(load_image('coins.png'), (10, 10)), (185 + text.get_width() + 2, 160))
+        font = pygame.font.Font(font_name, 16)
         text = font.render(self.can_buy()[1], True, font_color)
         screen.blit(text, (185, 180))
         if f"hero{self.pos}" == hero_name:
