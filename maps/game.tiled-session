@@ -3,7 +3,7 @@
         "height": 4300,
         "width": 2
     },
-    "activeFile": "map9.tmx",
+    "activeFile": "map8.tmx",
     "expandedProjectPaths": [
         "."
     ],
@@ -156,7 +156,7 @@
             "scale": 0.75,
             "selectedLayer": 0,
             "viewCenter": {
-                "x": 1052,
+                "x": 693.3333333333333,
                 "y": 249.3333333333333
             }
         },
@@ -164,8 +164,8 @@
             "scale": 0.75,
             "selectedLayer": 0,
             "viewCenter": {
-                "x": 2434.6666666666665,
-                "y": 114.66666666666669
+                "x": 1600,
+                "y": 160.66666666666663
             }
         },
         "pattern_tiles.tsx": {
