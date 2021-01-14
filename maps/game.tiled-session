@@ -3,7 +3,7 @@
         "height": 4300,
         "width": 2
     },
-    "activeFile": "experemental_map_1.tmx",
+    "activeFile": "map9.tmx",
     "expandedProjectPaths": [
         "."
     ],
@@ -44,20 +44,24 @@
                 "y": 156.66666666666663
             }
         },
+        "city_tiles.tsx": {
+            "scaleInDock": 1,
+            "scaleInEditor": 0.75
+        },
         "example_map.tmx": {
             "scale": 0.6856854838709677,
             "selectedLayer": 0,
             "viewCenter": {
-                "x": 479.0826227580123,
-                "y": 160.42340488091742
+                "x": 479.08262275801235,
+                "y": 159.6942075860041
             }
         },
         "example_map_2.tmx": {
             "scale": 0.4453125,
             "selectedLayer": 0,
             "viewCenter": {
-                "x": 2853.0526315789475,
-                "y": 397.4736842105263
+                "x": 1600,
+                "y": 160.5614035087719
             }
         },
         "example_map_3.tmx": {
@@ -85,14 +89,98 @@
             }
         },
         "map1.tmx": {
+            "scale": 1,
+            "selectedLayer": 0,
+            "viewCenter": {
+                "x": 959.5,
+                "y": 160
+            }
+        },
+        "map10.tmx": {
+            "scale": 1,
+            "selectedLayer": 0,
+            "viewCenter": {
+                "x": 133,
+                "y": 112
+            }
+        },
+        "map2.tmx": {
+            "scale": 1,
+            "selectedLayer": 0,
+            "viewCenter": {
+                "x": 959.5,
+                "y": 160.5
+            }
+        },
+        "map3.tmx": {
             "scale": 0.75,
             "selectedLayer": 0,
             "viewCenter": {
-                "x": 891.3333333333333,
-                "y": 117.33333333333331
+                "x": 959.3333333333333,
+                "y": 160.66666666666663
             }
         },
+        "map4.tmx": {
+            "scale": 0.75,
+            "selectedLayer": 0,
+            "viewCenter": {
+                "x": 1279.3333333333333,
+                "y": 160.66666666666663
+            }
+        },
+        "map5.tmx": {
+            "scale": 0.75,
+            "selectedLayer": 0,
+            "viewCenter": {
+                "x": 2692,
+                "y": 232
+            }
+        },
+        "map6.tmx": {
+            "scale": 1,
+            "selectedLayer": 0,
+            "viewCenter": {
+                "x": 910,
+                "y": 136
+            }
+        },
+        "map7.tmx": {
+            "scale": 0.75,
+            "selectedLayer": 0,
+            "viewCenter": {
+                "x": 2825.333333333333,
+                "y": 130.66666666666669
+            }
+        },
+        "map8.tmx": {
+            "scale": 0.75,
+            "selectedLayer": 0,
+            "viewCenter": {
+                "x": 1969.3333333333333,
+                "y": 249.3333333333333
+            }
+        },
+        "map9.tmx": {
+            "scale": 0.75,
+            "selectedLayer": 0,
+            "viewCenter": {
+                "x": 2434.6666666666665,
+                "y": 114.66666666666669
+            }
+        },
+        "pattern_tiles.tsx": {
+            "scaleInDock": 1,
+            "scaleInEditor": 1
+        },
+        "sewer_tileset.tsx": {
+            "scaleInDock": 1,
+            "scaleInEditor": 1
+        },
         "tile_group1.tsx": {
+            "scaleInDock": 1,
+            "scaleInEditor": 0.75
+        },
+        "tile_group2.tsx": {
             "scaleInDock": 1,
             "scaleInEditor": 1
         },
@@ -110,31 +198,45 @@
     "map.orientation": null,
     "map.tileHeight": 32,
     "map.tileWidth": 32,
-    "map.width": 60,
+    "map.width": 120,
     "openFiles": [
         "example_map.tmx",
         "tmw_desert_spacing.tsx",
         "example_map_2.tmx",
-        "experemental_map_1.tmx"
+        "tile_group2.tsx",
+        "map1.tmx",
+        "map2.tmx",
+        "map3.tmx",
+        "map4.tmx",
+        "sewer_tileset.tsx",
+        "pattern_tiles.tsx",
+        "city_tiles.tsx",
+        "tile_group1.tsx",
+        "map5.tmx",
+        "map7.tmx",
+        "map6.tmx",
+        "map8.tmx",
+        "map9.tmx",
+        "map10.tmx"
     ],
     "project": "game.tiled-project",
     "recentFiles": [
-        "map1.tmx",
-        "tile_group1.tsx",
         "example_map.tmx",
         "tmw_desert_spacing.tsx",
         "example_map_2.tmx",
-        "experemental_map_1.tmx",
-        "exmeremaental_map_2.tmx",
-        "tmw_desert_spacing_2.tsx",
-        "example_map_3.tmx",
-        "C:/Users/Keti/Downloads/Tiled/безымянный2.tmx",
-        "C:/Users/Keti/Downloads/Tiled/tmw_desert_spacing.tsx",
-        "C:/Users/Keti/Downloads/Tiled/sewer_tileset.tsx"
+        "tile_group2.tsx",
+        "map1.tmx",
+        "map2.tmx",
+        "map3.tmx",
+        "map4.tmx",
+        "sewer_tileset.tsx",
+        "pattern_tiles.tsx",
+        "city_tiles.tsx",
+        "tile_group1.tsx"
     ],
     "tileset.lastUsedFormat": "tsx",
     "tileset.margin": 0,
-    "tileset.spacing": 0,
+    "tileset.spacing": 2,
     "tileset.tileSize": {
         "height": 32,
         "width": 32

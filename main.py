@@ -45,9 +45,9 @@ def load_image(name, colorkey=None):
     return image
 
 
-LEVEL_NAMES = {1: 'map1', 2: 'map2', 3: 'example_map_2', 4: 'example_map',
-               5: 'example_map_2', 6: 'example_map', 7: 'example_map_2', 8: 'example_map',
-               9: 'example_map_2', 10: 'example_map'}
+LEVEL_NAMES = {1: 'map1', 2: 'map2', 3: 'map3', 4: 'map4',
+               5: 'map5', 6: 'map6', 7: 'map7', 8: 'map8',
+               9: 'map9', 10: 'map10'}
 
 LEVEL_COUNT = 10
 
