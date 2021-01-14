@@ -11,6 +11,7 @@ SIZE = WIDTH, HEIGHT = 600, 350
 
 IMAGES_DIR = "images"
 MAPS_DIR = 'maps'
+MUSIC_DIR = 'music'
 
 pygame.init()
 screen = pygame.display.set_mode(SIZE)
@@ -20,11 +21,10 @@ tile_width, tile_height = 32, 32
 
 VH = 4
 VW = 4
+
+
 # количество пикселей передвижения за одни кадр по каждой оси
 # обязательно должно быть делителем размера тайла
-
-pygame.mixer.music.load('music/fon1.mp3')
-pygame.mixer.music.play(-1)
 
 
 def load_image(name, colorkey=None):
@@ -111,7 +111,9 @@ coins_status = 0
 hero_name = ''
 # состояние пройденности уровней
 level_statuses = {}
-levels_db = []
+
+# беззвучный режим
+quiet = False
 
 # переменные для работы с БД
 con = sqlite3.connect("players/players.db")
@@ -142,6 +144,32 @@ def player_info(player):
     for i in range(1, LEVEL_COUNT + 1):
         if i not in level_statuses:
             level_statuses[i] = None
+
+
+def play_sound(sound_name):
+    if quiet:
+        return
+    fullname = os.path.join(MUSIC_DIR, sound_name)
+    if not os.path.isfile(fullname):
+        print(f"Файл '{fullname}' не найден")
+        sys.exit()
+    effect = pygame.mixer.Sound(f'{MUSIC_DIR}/{sound_name}')
+    effect.play()
+
+
+def play_music(music_name=None):
+    if quiet:
+        pygame.mixer.music.stop()
+        return
+    if not music_name:
+        pygame.mixer.music.play(-1)
+        return
+    fullname = os.path.join(MUSIC_DIR, music_name)
+    if not os.path.isfile(fullname):
+        print(f"Файл '{fullname}' не найден")
+        sys.exit()
+    pygame.mixer.music.load(f'{MUSIC_DIR}/{music_name}')
+    pygame.mixer.music.play(-1)
 
 
 def terminate():
@@ -188,9 +216,6 @@ class Player(pygame.sprite.Sprite):
                     return
         else:
             return
-
-        effect = pygame.mixer.Sound('music/space_btn.mp3')
-        effect.play()
 
         if self.now == self.d['up']:
             self.now = self.d['down']
@@ -327,7 +352,8 @@ class Game:
         self.camera = camera
         self.buttons = {'again': Button((550, 320), (30, 30), ['restart_btn.png']),
                         'pause': Button((500, 320), (30, 30), ['pause_btn.png', 'play_btn.png']),
-                        'menu': Button((20, 320), (30, 30), ['menu_btn.png'])}
+                        'menu': Button((20, 320), (30, 30), ['menu_btn.png']),
+                        'sound': SoundButton(pos=(70, 320), size=(30, 30))}
 
         font = pygame.font.Font(None, 25)
         self.text = font.render(f"Уровень {level_number}", True, (100, 100, 100))
@@ -354,6 +380,8 @@ class Game:
             return 2
         if self.buttons['menu'].get_click(pos):
             return 3
+        if self.buttons['sound'].get_click(pos):
+            return 4
         return None
 
     def move_hero(self):
@@ -368,7 +396,8 @@ class Game:
 
 
 class Button:
-    def __init__(self, pos, size, image_names):
+    def __init__(self, pos, size, image_names, sound=True):
+        self.sound = sound
         self.pos = pos
         self.size = size
         self.images = []
@@ -377,16 +406,14 @@ class Button:
             self.images.append(pygame.transform.scale(load_image(name), self.size))
 
         self.image = self.images[self.ind_image]
+        self.rect = pygame.Rect(*pos, *size)
 
     def get_click(self, pos):
-        if self.pos is None or self.size is None:
-            return
-        if self.pos[0] <= pos[0] <= (self.pos[0] + self.size[0]) \
-                and self.pos[1] <= pos[1] <= (self.pos[1] + self.size[1]):
+        if self.rect.collidepoint(pos):
+            play_sound('press_btn.mp3')
             self.on_click()
             return True
-        else:
-            return None
+        return False
 
     def render(self, screen):
         if self.image:
@@ -397,6 +424,26 @@ class Button:
         if self.ind_image >= len(self.images):
             self.ind_image = 0
         self.image = pygame.transform.scale(self.images[self.ind_image], self.size)
+
+
+class SoundButton:
+    images = {True: load_image('notsound_btn.png'), False: load_image('sound_btn.png')}
+
+    def __init__(self, pos, size):
+        self.images = {True: pygame.transform.scale(SoundButton.images[True], size),
+                       False: pygame.transform.scale(SoundButton.images[False], size)}
+        self.pos = pos
+        self.size = size
+        self.rect = pygame.Rect(*pos, *size)
+
+    def render(self, screen):
+        screen.blit(self.images[quiet], self.pos)
+
+    def get_click(self, pos):
+        if self.rect.collidepoint(pos):
+            play_sound('press_btn.mp3')
+            return True
+        return False
 
 
 # выводит в указанной позиции финансы игрока
@@ -461,7 +508,8 @@ class LevelMenu:
     def __init__(self, level_icons):
         self.level_icons = level_icons
         self.buttons = {'shop': Button(pos=(540, 10), size=(35, 35), image_names=['shop_btn.png']),
-                        'mainmenu': Button(pos=(220, 10), size=(150, 30), image_names=['mainmenu_btn.png'])}
+                        'mainmenu': Button(pos=(220, 10), size=(150, 30), image_names=['mainmenu_btn.png']),
+                        'sound': SoundButton(pos=(540, 300), size=(45, 45))}
         self.coins = CoinsStatus((20, 20))
 
     def render(self, screen):
@@ -479,11 +527,13 @@ class LevelMenu:
             return LEVEL_COUNT + 1
         elif self.buttons['mainmenu'].get_click(pos):
             return LEVEL_COUNT + 2
+        elif self.buttons['sound'].get_click(pos):
+            return LEVEL_COUNT + 3
 
 
 # функция, реализующая меню с уровнями
 def level_menu():
-    global level_statuses
+    global level_statuses, quiet
 
     all_sprites.empty()
     screen.fill((245, 245, 220))
@@ -509,8 +559,7 @@ def level_menu():
             if event.type == pygame.MOUSEBUTTONDOWN:
                 res = menu.get_click(event.pos)
                 if res in range(1, LEVEL_COUNT + 1):
-                    effect = pygame.mixer.Sound('music/choose_level.mp3')
-                    effect.play()
+                    play_sound('choose_level.mp3')
                     return in_level(res)
                     # переход в уровень
                 if res == LEVEL_COUNT + 1:
@@ -519,6 +568,10 @@ def level_menu():
                 elif res == LEVEL_COUNT + 2:
                     return mainmenu()
                     # переход в главное меню
+                elif res == LEVEL_COUNT + 3:
+                    quiet = not quiet
+                    play_music()
+                    # изменить статус тишины
 
         screen.fill((245, 245, 220))
 
@@ -539,7 +592,8 @@ class Shop:
                         'next': Button(pos=(500, 150), size=(60, 60), image_names=['next_btn.png']),
                         'menu': Button((530, 10), (45, 45), ['menu_btn.png']),
                         'buy': None,
-                        'choose': None}
+                        'choose': None,
+                        'sound': SoundButton(pos=(540, 300), size=(45, 45))}
         self.coins = CoinsStatus((20, 20))
         self.image = HERO_IMAGES['hero1']['state']
 
@@ -565,14 +619,16 @@ class Shop:
             return 4
         if self.buttons['menu'].get_click(pos):
             return 5
+        if self.buttons['sound'].get_click(pos):
+            return 6
 
     def render(self, screen):
         if self.can_buy()[0] == False:
             self.buttons['buy'] = None
-            self.buttons['choose'] = Button(pos=(260, 235), size=(80, 20), image_names=['choose_btn.png'])
+            self.buttons['choose'] = Button(pos=(260, 235), size=(80, 20), image_names=['choose_btn.png'], sound=False)
         else:
             self.buttons['choose'] = None
-            self.buttons['buy'] = Button(pos=(260, 235), size=(80, 20), image_names=['buy_btn.png'])
+            self.buttons['buy'] = Button(pos=(260, 235), size=(80, 20), image_names=['buy_btn.png'], sound=False)
 
         screen.blit(pygame.transform.scale(load_image('table.png'), (300, 200)), (160, 100))
         for btn in self.buttons:
@@ -599,7 +655,7 @@ class Shop:
 
 # функция, реализующая магазин
 def shop_menu():
-    global coins_status, hero_name
+    global coins_status, hero_name, quiet
     shop = Shop()
     running = True
     while running:
@@ -629,20 +685,21 @@ def shop_menu():
                         cur.execute("UPDATE players_info SET skins = ? WHERE id = ?", (shop.skins, player_id))
                         cur.execute("UPDATE players_info SET money = ? WHERE id = ?", (coins_status, player_id))
                         con.commit()
-                        effect = pygame.mixer.Sound('music/buy.mp3')
-                        effect.play()
+                        play_sound('buy.mp3')
                     elif price[0] is None:
-                        effect = pygame.mixer.Sound('music/cannotbuy.mp3')
-                        effect.play()
+                        play_sound('cannotbuy.mp3')
                     # купить предмет
                 if res == 4:
                     hero_name = f"hero{shop.pos}"
-                    effect = pygame.mixer.Sound('music/choose_hero.mp3')
-                    effect.play()
+                    play_sound('choose_hero.mp3')
                     # выбрать скин
                 if res == 5:
                     return level_menu()
                     # вернуться к выбору уровней
+                if res == 6:
+                    quiet = not quiet
+                    play_music()
+                    # изменить статус тишины
         screen.fill((245, 245, 220))
         shop.render(screen)
         pygame.display.flip()
@@ -651,7 +708,7 @@ def shop_menu():
 
 # процесс игры в уровне
 def in_level(level_number):
-    global level, hero, camera, game, coins_status, hero_name
+    global level, hero, camera, game, coins_status, hero_name, quiet
 
     level_name = LEVEL_NAMES[level_number]
 
@@ -667,6 +724,9 @@ def in_level(level_number):
     camera = Camera()
     game = Game(level, hero, camera, level_number)
 
+    music = random.choice(['fon1.mp3', 'fon2.mp3'])
+    play_music(music)
+
     running = True
     while running:
         for event in pygame.event.get():
@@ -678,17 +738,19 @@ def in_level(level_number):
             if event.type == pygame.MOUSEBUTTONDOWN:
                 res = game.check_buttons(event.pos)
                 if res == 1:
-                    all_sprites.empty()
-                    level = LevelMap(f'{level_name}.tmx', free_tiles, target_tile)
-                    hero = Player(0, 8, hero_name)
-                    camera = Camera()
-                    game = Game(level, hero, camera, level_number)
-                    break
+                    return in_level(level_number)
+                    #  перезапуск уровня
                 elif res == 2:
                     pass
                 elif res == 3:
+                    pygame.mixer.music.load(f'{MUSIC_DIR}/menu.mp3')
+                    pygame.mixer.music.play(-1)
                     return level_menu()
                     # переход в меню с уровнями
+                elif res == 4:
+                    quiet = not quiet
+                    play_music()
+                    # изменить статус тишины
 
         screen.fill((245, 245, 220))
 
@@ -777,7 +839,8 @@ class LevelOver:
 
         self.buttons = {'again': Button((220 + x, 200 + y), (40, 40), ['restart_btn.png']),
                         'menu': Button((100 + x, 200 + y), (40, 40), ['menu_btn.png']),
-                        'next': Button((340 + x, 200 + y), (40, 40), ['next_btn.png'])}
+                        'next': Button((340 + x, 200 + y), (40, 40), ['next_btn.png']),
+                        'sound': SoundButton(pos=(540, 300), size=(45, 45))}
         if level_number == LEVEL_COUNT or level_statuses[level_number + 1] is None:
             self.buttons['next'] = None
 
@@ -820,6 +883,8 @@ class LevelOver:
             return LEVEL_COUNT + 2
         elif self.buttons['next'] and self.buttons['next'].get_click(pos):
             return LEVEL_COUNT + 3
+        elif self.buttons['sound'].get_click(pos):
+            return LEVEL_COUNT + 4
 
     def update(self):
         all_sprites.update()
@@ -827,6 +892,8 @@ class LevelOver:
 
 # конец уровня
 def level_over(level_number, is_win, added_coins=None):
+    global quiet
+
     all_sprites.empty()
     screen.fill((0, 0, 0))
 
@@ -834,10 +901,9 @@ def level_over(level_number, is_win, added_coins=None):
     i = 0
 
     if is_win:
-        effect = pygame.mixer.Sound('music/win.mp3')
+        play_sound('win.mp3')
     else:
-        effect = pygame.mixer.Sound('music/lose.mp3')
-    effect.play()
+        play_sound('lose.mp3')
 
     running = True
     while running:
@@ -847,6 +913,7 @@ def level_over(level_number, is_win, added_coins=None):
             if event.type == pygame.MOUSEBUTTONDOWN:
                 res = window.get_click(event.pos)
                 if res == LEVEL_COUNT + 1:
+                    play_music('menu.mp3')
                     return level_menu()
                     # переход в меню с уровнями
                 elif res == LEVEL_COUNT + 2:
@@ -855,6 +922,10 @@ def level_over(level_number, is_win, added_coins=None):
                 elif res == LEVEL_COUNT + 3:
                     return in_level(level_number + 1)
                     # следующий уровень
+                elif res == LEVEL_COUNT + 4:
+                    quiet = not quiet
+                    play_music()
+                    # изменить статус тишины
 
         screen.fill((245, 245, 220))
 
@@ -911,6 +982,8 @@ class InputBox:
 
 # Функция, реализующая регистрацию и вход в аккаунт
 def entertogame(newbie):
+    global quiet
+
     enter = EnterToGame(newbie)
     running = True
     while running:
@@ -937,6 +1010,10 @@ def entertogame(newbie):
                         player_info(enter.input_boxes['nickname'].text)
                         return mainmenu()
                         # переход в главное меню
+                if res == 3:
+                    quiet = not quiet
+                    play_music()
+                    # изменить статус тишины
             if event.type == pygame.KEYDOWN:
                 enter.input(event)
         screen.fill((245, 245, 220))
@@ -950,7 +1027,8 @@ class EnterToGame:
     def __init__(self, newbie):
         self.input_boxes = {'nickname': InputBox(pos=(210, 130), hide=False, limiter=(8, 16)),
                             'password': InputBox(pos=(210, 170), hide=True, limiter=(4, 8))}
-        self.buttons = {'back': Button(pos=(500, 10), size=(60, 60), image_names=['restart_btn.png'])}
+        self.buttons = {'back': Button(pos=(10, 300), size=(45, 45), image_names=['previous_btn.png']),
+                        'sound': SoundButton(pos=(540, 300), size=(45, 45))}
         self.errormessage = ('', (0, 0))
         if newbie:
             self.buttons['action'] = Button(pos=(185, 200), size=(200, 45), image_names=['signup_btn.png'])
@@ -965,6 +1043,8 @@ class EnterToGame:
             return 1
         if self.buttons['action'].get_click(pos):
             return 2
+        if self.buttons['sound'].get_click(pos):
+            return 3
 
     def clear(self):
         self.input_boxes = {'nickname': InputBox(pos=(210, 130), hide=False, limiter=(8, 16)),
@@ -1032,14 +1112,18 @@ class EnterToGame:
 # Класс, реализуюший выбор регистрации или входа в аккаунт
 class Choose:
     def __init__(self):
-        self.buttons = {'sign_up': Button(pos=((WIDTH - 200) // 2, 110), size=(200, 45), image_names=['signup_btn.png']),
-                        'sign_in': Button(pos=((WIDTH - 200) // 2, 185), size=(200, 45), image_names=['signin_btn.png'])}
+        self.buttons = {
+            'sign_up': Button(pos=((WIDTH - 200) // 2, 110), size=(200, 45), image_names=['signup_btn.png']),
+            'sign_in': Button(pos=((WIDTH - 200) // 2, 185), size=(200, 45), image_names=['signin_btn.png']),
+            'sound': SoundButton(pos=(540, 300), size=(45, 45))}
 
     def get_click(self, pos):
         if self.buttons['sign_up'].get_click(pos):
             return 1
         if self.buttons['sign_in'].get_click(pos):
             return 2
+        if self.buttons['sound'].get_click(pos):
+            return 3
 
     def render(self, screen):
         font = pygame.font.Font(None, 20)
@@ -1056,6 +1140,8 @@ class Choose:
 
 
 def choose_menu():
+    global quiet
+
     choose = Choose()
     running = True
     while running:
@@ -1070,6 +1156,10 @@ def choose_menu():
                 if res == 2:
                     return entertogame(False)
                     # Вход в аккаунт
+                if res == 3:
+                    quiet = not quiet
+                    play_music()
+                    # изменить статус тишины
         screen.fill((245, 245, 220))
         choose.render(screen)
         pygame.display.flip()
@@ -1083,7 +1173,8 @@ class MainMenu:
                         'shop': TextButton(pos=(180, 135), image='shop_btn.png', text='Магазин'),
                         'rating': TextButton(pos=(180, 185), image='rating_btn.png', text='Рейтинг'),
                         'change': TextButton(pos=(180, 235), image='restart_btn.png', text='Сменить пользователя'),
-                        'exit': TextButton(pos=(180, 285), image='close_btn.png', text='Выйти')}
+                        'exit': TextButton(pos=(180, 285), image='close_btn.png', text='Выйти'),
+                        'sound': SoundButton(pos=(540, 300), size=(45, 45))}
 
     def render(self, screen):
         for btn in self.buttons:
@@ -1107,6 +1198,8 @@ class MainMenu:
             return 4
         if self.buttons['exit'].get_click(pos):
             return 5
+        if self.buttons['sound'].get_click(pos):
+            return 6
 
 
 # Кнопка с текстом
@@ -1129,12 +1222,15 @@ class TextButton:
 
     def get_click(self, pos):
         if self.rect.collidepoint(pos):
+            play_sound('press_btn.mp3')
             return True
         return False
 
 
 # Главное меню
 def mainmenu():
+    global quiet
+
     menu = MainMenu()
     running = True
     while running:
@@ -1158,6 +1254,10 @@ def mainmenu():
                 if res == 5:
                     terminate()
                     # Выйти из игры
+                if res == 6:
+                    quiet = not quiet
+                    play_music()
+                    # изменить статус тишины
         screen.fill((245, 245, 220))
         menu.render(screen)
         pygame.display.flip()
@@ -1166,7 +1266,9 @@ def mainmenu():
 
 class ScoreTable:
     def __init__(self):
-        self.buttons = {'mainmenu': Button(pos=(10, 300), size=(45, 45), image_names=['previous_btn.png'])}
+        self.buttons = {'mainmenu': Button(pos=(10, 300), size=(45, 45), image_names=['previous_btn.png']),
+                        'sound': SoundButton(pos=(540, 300), size=(45, 45))}
+
         self.best = []
         db = list(cur.execute("SELECT nickname, levels FROM players_info").fetchall())
         score = []
@@ -1240,9 +1342,13 @@ class ScoreTable:
     def get_click(self, pos):
         if self.buttons['mainmenu'].get_click(pos):
             return 1
+        if self.buttons['sound'].get_click(pos):
+            return 2
 
 
 def score_table():
+    global quiet
+
     screen.fill((245, 245, 220))
 
     table = ScoreTable()
@@ -1257,6 +1363,10 @@ def score_table():
                 if res == 1:
                     return mainmenu()
                     # переход в главное меню
+                if res == 2:
+                    quiet = not quiet
+                    play_music()
+                    # изменить статус тишины
 
         screen.fill((245, 245, 220))
         table.render(screen)
@@ -1265,10 +1375,61 @@ def score_table():
         clock.tick(FPS)
 
 
-def main():
-    screen.fill((0, 0, 0))
+class StartWindow:
+    def __init__(self):
+        self.buttons = {'play': Button(pos=((WIDTH - 200) // 2, 200), size=(200, 45), image_names=['play_game_btn.png']),
+                        'sound': SoundButton(pos=(540, 300), size=(45, 45))}
 
-    choose_menu()
+        self.name_image = load_image('game_name2.png')
+        self.back_image = pygame.transform.scale(load_image('background.jpg'), (WIDTH, HEIGHT))
+
+    def render(self, screen):
+        screen.blit(self.back_image, (0, 0))
+        screen.blit(self.name_image, ((WIDTH - self.name_image.get_width()) // 2, 100))
+        for btn in self.buttons:
+            self.buttons[btn].render(screen)
+
+    def get_click(self, pos):
+        if self.buttons['play'].get_click(pos):
+            return 1
+        if self.buttons['sound'].get_click(pos):
+            return 2
+
+
+def start_window():
+    global quiet
+
+    screen.fill((245, 245, 220))
+
+    window = StartWindow()
+
+    running = True
+    while running:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                terminate()
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                res = window.get_click(event.pos)
+                if res == 1:
+                    return choose_menu()
+                    # переход в меню входа в игру
+                if res == 2:
+                    quiet = not quiet
+                    play_music()
+                    # изменить статус тишины
+
+        screen.fill((245, 245, 220))
+        window.render(screen)
+
+        pygame.display.flip()
+        clock.tick(FPS)
+
+
+def main():
+    play_music('menu.mp3')
+
+    screen.fill((0, 0, 0))
+    start_window()
 
 
 if __name__ == '__main__':
