@@ -6,12 +6,14 @@ import sys
 import os
 import sqlite3
 
-FPS = 70
+FPS = 60
 SIZE = WIDTH, HEIGHT = 600, 350
 
 IMAGES_DIR = "images"
 MAPS_DIR = 'maps'
 MUSIC_DIR = 'music'
+DATA_DIR = 'data'
+FONTS_DIR = 'fonts'
 
 pygame.init()
 screen = pygame.display.set_mode(SIZE)
@@ -43,7 +45,7 @@ def load_image(name, colorkey=None):
     return image
 
 
-LEVEL_NAMES = {1: 'example_map_2', 2: 'example_map', 3: 'example_map_2', 4: 'example_map',
+LEVEL_NAMES = {1: 'map1', 2: 'map2', 3: 'example_map_2', 4: 'example_map',
                5: 'example_map_2', 6: 'example_map', 7: 'example_map_2', 8: 'example_map',
                9: 'example_map_2', 10: 'example_map'}
 
@@ -116,8 +118,13 @@ level_statuses = {}
 quiet = False
 
 # переменные для работы с БД
-con = sqlite3.connect("players/players.db")
+con = sqlite3.connect(f"{DATA_DIR}/players.db")
 cur = con.cursor()
+
+font_name = f'{FONTS_DIR}/font3.ttf'
+font_color = (255, 255, 255)
+
+back_image = pygame.transform.scale(load_image('background.jpg'), SIZE)
 
 
 def player_info(player):
@@ -127,6 +134,7 @@ def player_info(player):
     player_id = cur.execute("SELECT id FROM players_info WHERE nickname = ?", (nickname,)).fetchone()[0]
     # финансовое состояние игрока
     coins_status = cur.execute("SELECT money FROM players_info WHERE nickname = ?", (nickname,)).fetchone()[0]
+    level_statuses = {}
     hero_name = 'hero1'
     levels_db = cur.execute("SELECT levels FROM players_info WHERE nickname = ?", (nickname,)).fetchone()[0].split(';')
     try:
@@ -146,6 +154,7 @@ def player_info(player):
             level_statuses[i] = None
 
 
+# запускает звук
 def play_sound(sound_name):
     if quiet:
         return
@@ -157,6 +166,7 @@ def play_sound(sound_name):
     effect.play()
 
 
+# запускает музыку
 def play_music(music_name=None):
     if quiet:
         pygame.mixer.music.stop()
@@ -355,15 +365,15 @@ class Game:
                         'menu': Button((20, 320), (30, 30), ['menu_btn.png']),
                         'sound': SoundButton(pos=(70, 320), size=(30, 30))}
 
-        font = pygame.font.Font(None, 25)
-        self.text = font.render(f"Уровень {level_number}", True, (100, 100, 100))
+        font = pygame.font.Font(font_name, 25)
+        self.text = font.render(f"Уровень {level_number}", True, font_color)
 
     def render(self, screen):
         self.level.render(screen)
         all_sprites.draw(screen)
         for btn in self.buttons:
             self.buttons[btn].render(screen)
-        screen.blit(self.text, ((WIDTH - self.text.get_width()) // 2, 330))
+        screen.blit(self.text, ((WIDTH - self.text.get_width()) // 2, 325))
 
     def update(self):
         if not self.is_pause:
@@ -426,6 +436,7 @@ class Button:
         self.image = pygame.transform.scale(self.images[self.ind_image], self.size)
 
 
+# кпока, отвечающая за смену звука
 class SoundButton:
     images = {True: load_image('notsound_btn.png'), False: load_image('sound_btn.png')}
 
@@ -457,8 +468,8 @@ class CoinsStatus:
         image = pygame.Surface((self.icon_size[0] + self.text_size[0], self.icon_size[1] + self.text_size[1]),
                                pygame.SRCALPHA, 32)
         image.blit(pygame.transform.scale(load_image('coins.png'), self.icon_size), (0, 0))
-        font = pygame.font.Font(None, 20)
-        text = font.render(f"{coins_status}", True, (0, 0, 0))
+        font = pygame.font.Font(font_name, 20)
+        text = font.render(f"{coins_status}", True, font_color)
         x = (self.text_size[0] - text.get_width()) // 2
         y = (self.text_size[1] - text.get_height()) // 2
         image.blit(text, (x + self.icon_size[0], y))
@@ -470,7 +481,7 @@ class LevelIcon:
     images = {'table': load_image('level.png'), 'unlock': load_image('unlock.png'), 'lock': load_image('lock.png')}
 
     def __init__(self, number, status, pos, size):
-        font = pygame.font.Font(None, 26)
+        font = pygame.font.Font(font_name, 26)
         text = font.render(f"{number}", True, (200, 20, 0))
         x = (size[0] - text.get_width()) // 2
         y = (size[1] - text.get_height()) // 2
@@ -533,10 +544,9 @@ class LevelMenu:
 
 # функция, реализующая меню с уровнями
 def level_menu():
-    global level_statuses, quiet
+    global level_statuses, quiet, back_image
 
     all_sprites.empty()
-    screen.fill((245, 245, 220))
 
     level_icons = []
 
@@ -573,7 +583,7 @@ def level_menu():
                     play_music()
                     # изменить статус тишины
 
-        screen.fill((245, 245, 220))
+        screen.blit(back_image, (0, 0))
 
         menu.render(screen)
 
@@ -634,20 +644,20 @@ class Shop:
         for btn in self.buttons:
             if self.buttons[btn]:
                 self.buttons[btn].render(screen)
-        font = pygame.font.Font(None, 20)
+        font = pygame.font.Font(font_name, 20)
         text = font.render('Название: {}'.format(
             cur.execute("SELECT skin_name FROM store WHERE skin_id LIKE ?", ('hero{}'.format(self.pos),)).fetchone()[
-                0]), True, (0, 0, 0))
+                0]), True, font_color)
         screen.blit(text, (185, 140))
         text = font.render('Цена: {}'.format(
             cur.execute("SELECT price FROM store WHERE skin_id LIKE ?", ('hero{}'.format(self.pos),)).fetchone()[0]),
-            True, (0, 0, 0))
+            True, font_color)
         screen.blit(text, (185, 160))
         screen.blit(pygame.transform.scale(load_image('coins.png'), (10, 10)), (185 + text.get_width() + 2, 160))
-        text = font.render(self.can_buy()[1], True, (0, 0, 0))
+        text = font.render(self.can_buy()[1], True, font_color)
         screen.blit(text, (185, 180))
         if f"hero{self.pos}" == hero_name:
-            text = font.render('Выбран', True, (0, 0, 0))
+            text = font.render('Выбран', True, font_color)
             screen.blit(text, (185, 200))
         screen.blit(self.image, (350, 175))
         self.coins.render(screen)
@@ -655,7 +665,7 @@ class Shop:
 
 # функция, реализующая магазин
 def shop_menu():
-    global coins_status, hero_name, quiet
+    global coins_status, hero_name, quiet, back_image
     shop = Shop()
     running = True
     while running:
@@ -700,7 +710,7 @@ def shop_menu():
                     quiet = not quiet
                     play_music()
                     # изменить статус тишины
-        screen.fill((245, 245, 220))
+        screen.blit(back_image, (0, 0))
         shop.render(screen)
         pygame.display.flip()
         clock.tick(FPS)
@@ -708,7 +718,7 @@ def shop_menu():
 
 # процесс игры в уровне
 def in_level(level_number):
-    global level, hero, camera, game, coins_status, hero_name, quiet
+    global level, hero, camera, game, coins_status, hero_name, quiet, back_image
 
     level_name = LEVEL_NAMES[level_number]
 
@@ -717,7 +727,6 @@ def in_level(level_number):
         target_tile = list(map(int, file.readline().split()))[0]
 
     all_sprites.empty()
-    screen.fill((0, 0, 0))
 
     level = LevelMap(f'{level_name}.tmx', free_tiles, target_tile)
     hero = Player(0, 8, hero_name)
@@ -752,7 +761,7 @@ def in_level(level_number):
                     play_music()
                     # изменить статус тишины
 
-        screen.fill((245, 245, 220))
+        screen.blit(back_image, (0, 0))
 
         game.update()
 
@@ -847,20 +856,20 @@ class LevelOver:
         if is_win:
             message = f"Уровень {level_number} пройден!"
         else:
-            message = f"Уровень {level_number} провален."
+            message = f"Уровень {level_number} провален"
 
-        font = pygame.font.Font(None, 50)
-        text = font.render(message, True, (0, 0, 0))
+        font = pygame.font.Font(font_name, 40)
+        text = font.render(message, True, font_color)
         x = (self.size[0] - text.get_width()) // 2
         y = 90
         self.image.blit(text, (x, y))
 
         if added_coins:
-            font = pygame.font.Font(None, 20)
+            font = pygame.font.Font(font_name, 20)
             x += text.get_width()
             y += text.get_height() + 10
-            text = font.render(f"+{self.added_coins}", True, (0, 0, 0))
-            x -= text.get_width() + 20
+            text = font.render(f"+{self.added_coins}", True, font_color)
+            x -= text.get_width() + 30
             self.image.blit(text, (x, y))
             self.image.blit(pygame.transform.scale(load_image('coins.png'),
                                                    (20, 20)), (x + text.get_width() + 5, y))
@@ -892,10 +901,9 @@ class LevelOver:
 
 # конец уровня
 def level_over(level_number, is_win, added_coins=None):
-    global quiet
+    global quiet, back_image
 
     all_sprites.empty()
-    screen.fill((0, 0, 0))
 
     window = LevelOver(level_number, is_win, added_coins)
     i = 0
@@ -927,7 +935,7 @@ def level_over(level_number, is_win, added_coins=None):
                     play_music()
                     # изменить статус тишины
 
-        screen.fill((245, 245, 220))
+        screen.blit(back_image, (0, 0))
 
         window.update()
         if i % 50 == 0 and is_win:
@@ -944,8 +952,9 @@ def level_over(level_number, is_win, added_coins=None):
 class InputBox:
     def __init__(self, pos, hide, limiter):
         self.text = ''
-        self.rect = pygame.Rect((pos[0], pos[1], 155, 20))
-        self.image = pygame.transform.scale(load_image('line.png'), (155, 20))
+        self.size = 200, 30
+        self.rect = pygame.Rect((pos[0], pos[1], *self.size))
+        self.image = pygame.transform.scale(load_image('line.png'), self.size)
         self.pos = pos
         self.can_input = False
         self.hide = hide
@@ -967,22 +976,50 @@ class InputBox:
     def render(self, screen):
         # pygame.draw.rect(screen, (0, 0, 0), self.rect, 2)
         screen.blit(self.image, self.pos)
-        font = pygame.font.Font(None, 20)
+        font = pygame.font.Font(None, 27)
         if self.hide:
             text = font.render(len(self.text) * '*', True, (0, 0, 0))
         else:
             text = font.render(self.text, True, (0, 0, 0))
-        screen.blit(text, (self.pos[0] + 5, self.pos[1] + 3))
+        screen.blit(text, (self.pos[0] + 8, self.pos[1] + 3))
 
         if self.i % 70 in range(0, 20) and self.can_input:
-            x = self.pos[0] + text.get_width() + 6
+            x = self.pos[0] + text.get_width() + 9
             pygame.draw.line(screen, (0, 0, 0), (x, self.pos[1] + 5), (x, self.pos[1] + 5 + text.get_height() - 4), 1)
         self.i += 1
 
 
+# выдает подсказу про логин или пароль
+class HelpEnter:
+    def __init__(self, pos, size, image, up):
+        self.up = up
+        self.pos = pos
+        self.size = size
+        self.image = pygame.transform.scale(load_image('help_btn.png'), self.size)
+        self.image2 = pygame.transform.scale(load_image(image), (190, 140))
+        self.rect = pygame.Rect(pos[0] - 5, pos[1] - 5, size[0] + 10, size[1] + 10)
+
+        self.work = False
+
+    def get_move(self, pos):
+        self.work = False
+        if self.rect.collidepoint(pos):
+            self.work = True
+
+    def render(self, screen):
+        screen.blit(self.image, self.pos)
+
+        if self.work:
+            x = self.pos[0] + 2
+            y = self.pos[1] + 10
+            if self.up:
+                y -= self.image2.get_height()
+            screen.blit(self.image2, (x, y))
+
+
 # Функция, реализующая регистрацию и вход в аккаунт
 def entertogame(newbie):
-    global quiet
+    global quiet, back_image
 
     enter = EnterToGame(newbie)
     running = True
@@ -1016,7 +1053,9 @@ def entertogame(newbie):
                     # изменить статус тишины
             if event.type == pygame.KEYDOWN:
                 enter.input(event)
-        screen.fill((245, 245, 220))
+            if event.type == pygame.MOUSEMOTION:
+                enter.get_move(event.pos)
+        screen.blit(back_image, (0, 0))
         enter.render(screen)
         pygame.display.flip()
         clock.tick(FPS)
@@ -1025,15 +1064,19 @@ def entertogame(newbie):
 # Класс, реализующий регистрацию и вход в аккаунт
 class EnterToGame:
     def __init__(self, newbie):
-        self.input_boxes = {'nickname': InputBox(pos=(210, 130), hide=False, limiter=(8, 16)),
-                            'password': InputBox(pos=(210, 170), hide=True, limiter=(4, 8))}
+        self.input_boxes = {'nickname': InputBox(pos=((WIDTH - 200) // 2, 130), hide=False, limiter=(8, 16)),
+                            'password': InputBox(pos=((WIDTH - 200) // 2, 180), hide=True, limiter=(4, 8))}
         self.buttons = {'back': Button(pos=(10, 300), size=(45, 45), image_names=['previous_btn.png']),
-                        'sound': SoundButton(pos=(540, 300), size=(45, 45))}
-        self.errormessage = ('', (0, 0))
+                        'sound': SoundButton(pos=(540, 300), size=(45, 45)),
+                        'help_pass': HelpEnter(pos=(403, 182), size=(20, 20), image='cloud2.png', up=False),
+                        'help_nick': HelpEnter(pos=(403, 133), size=(20, 20), image='cloud1.png', up=True)}
+        self.errormessage = None
         if newbie:
-            self.buttons['action'] = Button(pos=(185, 200), size=(200, 45), image_names=['signup_btn.png'])
+            self.buttons['action'] = Button(pos=((WIDTH - 200) // 2, 230), size=(200, 45),
+                                            image_names=['signup_btn.png'])
         else:
-            self.buttons['action'] = Button(pos=(185, 200), size=(200, 45), image_names=['signin_btn.png'])
+            self.buttons['action'] = Button(pos=((WIDTH - 200) // 2, 230), size=(200, 45),
+                                            image_names=['signin_btn.png'])
         self.newbie = newbie
 
     def get_click(self, pos):
@@ -1047,8 +1090,8 @@ class EnterToGame:
             return 3
 
     def clear(self):
-        self.input_boxes = {'nickname': InputBox(pos=(210, 130), hide=False, limiter=(8, 16)),
-                            'password': InputBox(pos=(210, 170), hide=True, limiter=(4, 8))}
+        self.input_boxes = {'nickname': InputBox(pos=((WIDTH - 200) // 2, 130), hide=False, limiter=(8, 16)),
+                            'password': InputBox(pos=((WIDTH - 200) // 2, 180), hide=True, limiter=(4, 8))}
 
     def input(self, event):
         for input_box in self.input_boxes:
@@ -1057,41 +1100,42 @@ class EnterToGame:
     def render(self, screen):
         for input_box in self.input_boxes:
             self.input_boxes[input_box].render(screen)
-        font = pygame.font.Font(None, 20)
-        text = font.render('Введите логин и пароль', True, (0, 0, 0))
-        screen.blit(text, (205, 100))
-        text = font.render('Логин (A-z; 0-9; _); 8-16:', True, (0, 0, 0))
-        screen.blit(text, (54, 133))
-        text = font.render('Пароль (A-z; 0-9); 4-8:', True, (0, 0, 0))
-        screen.blit(text, (68, 173))
+        font = pygame.font.Font(font_name, 25)
+        text = font.render('Введите логин и пароль', True, font_color)
+        screen.blit(text, ((WIDTH - text.get_width()) // 2, 65))
+        font = pygame.font.Font(font_name, 20)
+        text = font.render('Логин:', True, font_color)
+        screen.blit(text, (110, 135))
+        text = font.render('Пароль:', True, font_color)
+        screen.blit(text, (110, 185))
         for button in self.buttons:
             self.buttons[button].render(screen)
-        if len(self.errormessage[0]) > 0:
-            text = font.render(self.errormessage[0], True, (255, 0, 0))
-            screen.blit(text, (self.errormessage[1][0], self.errormessage[1][1]))
+        if self.errormessage:
+            text = font.render(self.errormessage, True, (255, 0, 0))
+            screen.blit(text, ((WIDTH - text.get_width()) // 2, 280))
 
     def check(self):
         if self.newbie:
             for input_box in self.input_boxes:
                 if not self.input_boxes[input_box].limiter[0] <= len(self.input_boxes[input_box].text) <= \
                        self.input_boxes[input_box].limiter[1]:
-                    self.errormessage = ('Ошибка в длине ввода', (207, 275))
+                    self.errormessage = 'Ошибка в длине ввода'
                     self.clear()
                     return False
             for i in self.input_boxes['nickname'].text:
                 if i not in 'qwertyuiopasdfghjklzxcvbnm0123456789_':
-                    self.errormessage = ('В логине имеются символы, отличные от указанных', (130, 275))
+                    self.errormessage = 'В логине имеются символы, отличные от указанных'
                     self.clear()
                     return False
             for i in self.input_boxes['password'].text:
                 if i not in 'qwertyuiopasdfghjklzxcvbnm0123456789':
-                    self.errormessage = ('В пароле имеются символы, отличные от указанных', (130, 275))
+                    self.errormessage = 'В пароле имеются символы, отличные от указанных'
                     self.clear()
                     return False
             nicknames = cur.execute("SELECT nickname FROM players_info").fetchall()
             for i in nicknames:
                 if self.input_boxes['nickname'].text == i[0]:
-                    self.errormessage = ('Логин занят', (245, 275))
+                    self.errormessage = 'Логин занят'
                     self.clear()
                     return False
             return True
@@ -1101,20 +1145,24 @@ class EnterToGame:
                                        (self.input_boxes['nickname'].text,)).fetchone()[0]
                 if password == self.input_boxes['password'].text:
                     return True
-                self.errormessage = ('Введен неверный пароль', (195, 255))
+                self.errormessage = 'Введен неверный пароль'
                 self.clear()
             except TypeError:
-                self.errormessage = ('Введен неверный логин', (205, 255))
+                self.errormessage = 'Введен неверный логин'
                 self.clear()
             return False
+
+    def get_move(self, pos):
+        self.buttons['help_nick'].get_move(pos)
+        self.buttons['help_pass'].get_move(pos)
 
 
 # Класс, реализуюший выбор регистрации или входа в аккаунт
 class Choose:
     def __init__(self):
         self.buttons = {
-            'sign_up': Button(pos=((WIDTH - 200) // 2, 110), size=(200, 45), image_names=['signup_btn.png']),
-            'sign_in': Button(pos=((WIDTH - 200) // 2, 185), size=(200, 45), image_names=['signin_btn.png']),
+            'sign_up': Button(pos=((WIDTH - 200) // 2, 135), size=(200, 45), image_names=['signup_btn.png']),
+            'sign_in': Button(pos=((WIDTH - 200) // 2, 230), size=(200, 45), image_names=['signin_btn.png']),
             'sound': SoundButton(pos=(540, 300), size=(45, 45))}
 
     def get_click(self, pos):
@@ -1126,13 +1174,14 @@ class Choose:
             return 3
 
     def render(self, screen):
-        font = pygame.font.Font(None, 20)
-        text = font.render('Добро пожаловать!', True, (0, 0, 0))
-        screen.blit(text, (233, 75))
-        text = font.render('Если вы здесь впервые, то можете', True, (0, 0, 0))
-        screen.blit(text, (190, 95))
-        text = font.render('Иначе можете', True, (0, 0, 0))
-        screen.blit(text, (250, 170))
+        font = pygame.font.Font(font_name, 40)
+        text = font.render('Добро пожаловать!', True, font_color)
+        screen.blit(text, ((WIDTH - text.get_width()) // 2, 20))
+        font = pygame.font.Font(font_name, 20)
+        text = font.render('Если вы здесь впервые, то можете', True, font_color)
+        screen.blit(text, ((WIDTH - text.get_width()) // 2, 105))
+        text = font.render('Иначе можете', True, font_color)
+        screen.blit(text, ((WIDTH - text.get_width()) // 2, 205))
         for btn in self.buttons:
             self.buttons[btn].render(screen)
 
@@ -1140,7 +1189,7 @@ class Choose:
 
 
 def choose_menu():
-    global quiet
+    global quiet, back_image
 
     choose = Choose()
     running = True
@@ -1160,7 +1209,7 @@ def choose_menu():
                     quiet = not quiet
                     play_music()
                     # изменить статус тишины
-        screen.fill((245, 245, 220))
+        screen.blit(back_image, (0, 0))
         choose.render(screen)
         pygame.display.flip()
         clock.tick(FPS)
@@ -1169,23 +1218,23 @@ def choose_menu():
 # Класс главного меню
 class MainMenu:
     def __init__(self):
-        self.buttons = {'levels': TextButton(pos=(180, 85), image='menu_btn.png', text='Выбор уровня'),
-                        'shop': TextButton(pos=(180, 135), image='shop_btn.png', text='Магазин'),
-                        'rating': TextButton(pos=(180, 185), image='rating_btn.png', text='Рейтинг'),
-                        'change': TextButton(pos=(180, 235), image='restart_btn.png', text='Сменить пользователя'),
-                        'exit': TextButton(pos=(180, 285), image='close_btn.png', text='Выйти'),
-                        'sound': SoundButton(pos=(540, 300), size=(45, 45))}
+        self.buttons = {'levels': TextButton(pos=(150, 85), image='menu_btn.png', text=' Выбор уровня'),
+                        'shop': TextButton(pos=(150, 135), image='shop_btn.png', text=' Магазин'),
+                        'rating': TextButton(pos=(150, 185), image='rating_btn.png', text=' Рейтинг'),
+                        'change': TextButton(pos=(150, 235), image='restart_btn.png', text=' Сменить пользователя'),
+                        'exit': TextButton(pos=(150, 285), image='close_btn.png', text=' Выйти'),
+                        'sound': SoundButton(pos=(550, 300), size=(45, 45))}
 
     def render(self, screen):
         for btn in self.buttons:
             self.buttons[btn].render(screen)
-        '''
-        font = pygame.font.Font(None, 50)
-        text = font.render('Главное меню', True, (100, 0, 0))
-        '''
-        image = pygame.transform.scale(load_image('mainmenu_btn.png'), (200, 45))
-        x = (WIDTH - image.get_width()) // 2
-        screen.blit(image, (x, 20))
+
+        font = pygame.font.Font(font_name, 60)
+        text = font.render('MAIN MENU', True, (200, 200, 200))
+        screen.blit(text, ((WIDTH - text.get_width()) // 2, 20))
+        font = pygame.font.Font(font_name, 20)
+        text = font.render(nickname, True, font_color)
+        screen.blit(text, (10, 10))
 
     def get_click(self, pos):
         if self.buttons['rating'].get_click(pos):
@@ -1207,8 +1256,8 @@ class TextButton:
     def __init__(self, pos, image, text):
         self.text = text
         self.pos = pos
-        font = pygame.font.Font(None, 40)
-        text = font.render(self.text, True, (0, 0, 0))
+        font = pygame.font.Font(font_name, 30)
+        text = font.render(self.text, True, font_color)
         self.width = text.get_width()
         self.height = text.get_height()
         self.image = pygame.Surface((self.height + self.width + 2, self.height),
@@ -1229,7 +1278,7 @@ class TextButton:
 
 # Главное меню
 def mainmenu():
-    global quiet
+    global quiet, back_image
 
     menu = MainMenu()
     running = True
@@ -1258,12 +1307,13 @@ def mainmenu():
                     quiet = not quiet
                     play_music()
                     # изменить статус тишины
-        screen.fill((245, 245, 220))
+        screen.blit(back_image, (0, 0))
         menu.render(screen)
         pygame.display.flip()
         clock.tick(FPS)
 
 
+# таблица рекордов
 class ScoreTable:
     def __init__(self):
         self.buttons = {'mainmenu': Button(pos=(10, 300), size=(45, 45), image_names=['previous_btn.png']),
@@ -1287,14 +1337,14 @@ class ScoreTable:
             i += 1
 
     def render(self, screen):
-        font = pygame.font.Font(None, 40)
-        text = font.render('Таблица рекордов', True, (100, 100, 100))
+        font = pygame.font.Font(font_name, 40)
+        text = font.render('Таблица рекордов', True, (255, 255, 255))
         x = (WIDTH - text.get_width()) // 2
         screen.blit(text, (x, 10))
 
         if not self.best:
-            font = pygame.font.Font(None, 25)
-            text = font.render('Здесь пока нет рекордов', True, (150, 150, 150))
+            font = pygame.font.Font(font_name, 25)
+            text = font.render('Здесь пока нет рекордов', True, font_color)
             x = (WIDTH - text.get_width()) // 2
             screen.blit(text, (x, 100))
             return
@@ -1304,34 +1354,34 @@ class ScoreTable:
         delta_y = 20
         y = top
 
-        font = pygame.font.Font(None, 25)
-        text = font.render('Номер', True, (0, 0, 0))
+        font = pygame.font.Font(font_name, 25)
+        text = font.render('Номер', True, font_color)
         x = (width_col0 - text.get_width()) // 2
         screen.blit(text, (x + left, y))
-        text = font.render('Ник', True, (0, 0, 0))
+        text = font.render('Ник', True, font_color)
         x = (width_col1 - text.get_width()) // 2
         screen.blit(text, (x + left + width_col0, y))
         font = pygame.font.Font(None, 20)
-        text = font.render('Количество пройденных уровней', True, (0, 0, 0))
+        text = font.render('Количество пройденных уровней', True, font_color)
         screen.blit(text, (left + width_col0 + width_col1, y))
         width_col2 = text.get_width()
         y += text.get_height() + delta_y
 
         len_line_x = width_col0 + width_col1 + width_col2 + 5
-        pygame.draw.line(screen, (0, 0, 0), (left, top - 5), (left + len_line_x, top - 5))
-        pygame.draw.line(screen, (0, 0, 0), (left, y - delta_y // 2), (left + len_line_x, y - delta_y // 2))
+        pygame.draw.line(screen, font_color, (left, top - 5), (left + len_line_x, top - 5))
+        pygame.draw.line(screen, font_color, (left, y - delta_y // 2), (left + len_line_x, y - delta_y // 2))
 
-        font = pygame.font.Font(None, 25)
+        font = pygame.font.Font(font_name, 25)
         i = 1
         for nick, count in self.best:
-            text = font.render(str(i), True, (50, 50, 50))
+            text = font.render(str(i), True, (200, 200, 200))
             screen.blit(text, (left + 30, y))
-            text = font.render(nick, True, (50, 50, 50))
+            text = font.render(nick, True, (200, 200, 200))
             screen.blit(text, (left + width_col0 + 10, y))
-            text = font.render(str(count), True, (50, 50, 50))
+            text = font.render(str(count), True, (200, 200, 200))
             screen.blit(text, (left + width_col0 + width_col1 + 10, y))
             y += text.get_height() + delta_y
-            pygame.draw.line(screen, (30, 30, 30), (left, y - delta_y // 2), (left + len_line_x, y - delta_y // 2))
+            pygame.draw.line(screen, (220, 220, 220), (left, y - delta_y // 2), (left + len_line_x, y - delta_y // 2))
             if y + text.get_height() > HEIGHT:
                 break
             i += 1
@@ -1346,10 +1396,9 @@ class ScoreTable:
             return 2
 
 
+# таблица рекордов
 def score_table():
-    global quiet
-
-    screen.fill((245, 245, 220))
+    global quiet, back_image
 
     table = ScoreTable()
 
@@ -1368,23 +1417,23 @@ def score_table():
                     play_music()
                     # изменить статус тишины
 
-        screen.fill((245, 245, 220))
+        screen.blit(back_image, (0, 0))
         table.render(screen)
 
         pygame.display.flip()
         clock.tick(FPS)
 
 
+# начальный экран
 class StartWindow:
     def __init__(self):
-        self.buttons = {'play': Button(pos=((WIDTH - 200) // 2, 200), size=(200, 45), image_names=['play_game_btn.png']),
-                        'sound': SoundButton(pos=(540, 300), size=(45, 45))}
+        self.buttons = {
+            'play': Button(pos=((WIDTH - 200) // 2, 200), size=(200, 45), image_names=['play_game_btn.png']),
+            'sound': SoundButton(pos=(540, 300), size=(45, 45))}
 
         self.name_image = load_image('game_name2.png')
-        self.back_image = pygame.transform.scale(load_image('background.jpg'), (WIDTH, HEIGHT))
 
     def render(self, screen):
-        screen.blit(self.back_image, (0, 0))
         screen.blit(self.name_image, ((WIDTH - self.name_image.get_width()) // 2, 100))
         for btn in self.buttons:
             self.buttons[btn].render(screen)
@@ -1396,10 +1445,9 @@ class StartWindow:
             return 2
 
 
+# начальный экран
 def start_window():
-    global quiet
-
-    screen.fill((245, 245, 220))
+    global quiet, back_image
 
     window = StartWindow()
 
@@ -1418,7 +1466,7 @@ def start_window():
                     play_music()
                     # изменить статус тишины
 
-        screen.fill((245, 245, 220))
+        screen.blit(back_image, (0, 0))
         window.render(screen)
 
         pygame.display.flip()
@@ -1427,8 +1475,6 @@ def start_window():
 
 def main():
     play_music('menu.mp3')
-
-    screen.fill((0, 0, 0))
     start_window()
 
 
