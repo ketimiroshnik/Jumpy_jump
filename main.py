@@ -580,7 +580,7 @@ def level_menu():
                     # переход в главное меню
                 elif res == LEVEL_COUNT + 3:
                     quiet = not quiet
-                    play_music()
+                    play_music('menu.mp3')
                     # изменить статус тишины
 
         screen.blit(back_image, (0, 0))
@@ -764,13 +764,12 @@ def in_level(level_number):
                 elif res == 2:
                     pass
                 elif res == 3:
-                    pygame.mixer.music.load(f'{MUSIC_DIR}/menu.mp3')
-                    pygame.mixer.music.play(-1)
+                    play_music('menu.mp3')
                     return level_menu()
                     # переход в меню с уровнями
                 elif res == 4:
                     quiet = not quiet
-                    play_music()
+                    play_music(music)
                     # изменить статус тишины
 
         screen.blit(back_image, (0, 0))
