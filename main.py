@@ -128,7 +128,7 @@ back_image = pygame.transform.scale(load_image('background.jpg'), SIZE)
 
 
 def player_info(player):
-    global nickname, player_id, coins_status, hero_name, level_statuses, levels_db
+    global nickname, player_id, coins_status, hero_name, level_statuses
     nickname = player
     # id игрока
     player_id = cur.execute("SELECT id FROM players_info WHERE nickname = ?", (nickname,)).fetchone()[0]
@@ -565,7 +565,7 @@ def level_menu():
     while running:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
-                terminate()
+                areyousure(level_menu, terminate)
             if event.type == pygame.MOUSEBUTTONDOWN:
                 res = menu.get_click(event.pos)
                 if res in range(1, LEVEL_COUNT + 1):
@@ -632,6 +632,9 @@ class Shop:
         if self.buttons['sound'].get_click(pos):
             return 6
 
+    def change_image(self):
+        self.image = HERO_IMAGES['hero{}'.format(self.pos)]['state']
+
     def render(self, screen):
         if self.can_buy()[0] == False:
             self.buttons['buy'] = None
@@ -671,7 +674,7 @@ def shop_menu():
     while running:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
-                running = False
+                areyousure(shop_menu, terminate)
             if event.type == pygame.MOUSEBUTTONDOWN:
                 res = shop.get_click(event.pos)
                 if res == 0:
@@ -680,13 +683,22 @@ def shop_menu():
                 if res == 1:
                     if shop.pos > 1:
                         shop.pos -= 1
-                        shop.image = HERO_IMAGES['hero{}'.format(shop.pos)]['state']
                     # предыдущий предмет
+                    else:
+                        shop.pos = shop.length
+                    # последний в списке предмет
+                    shop.change_image()
+                    # сменить картинку персонажа
                 if res == 2:
                     if shop.pos < shop.length:
                         shop.pos += 1
                         shop.image = HERO_IMAGES['hero{}'.format(shop.pos)]['state']
                     # следующий предмет
+                    else:
+                        shop.pos = 1
+                    # первый в списке предмет
+                    shop.change_image()
+                    # сменить картинку персонажа
                 if res == 3:
                     price = shop.can_buy()
                     if price[0]:
@@ -740,7 +752,7 @@ def in_level(level_number):
     while running:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
-                terminate()
+                areyousure(level_menu, terminate)
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_SPACE:
                     game.move_hero()
@@ -917,7 +929,7 @@ def level_over(level_number, is_win, added_coins=None):
     while running:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
-                terminate()
+                areyousure(level_menu, terminate)
             if event.type == pygame.MOUSEBUTTONDOWN:
                 res = window.get_click(event.pos)
                 if res == LEVEL_COUNT + 1:
@@ -953,9 +965,9 @@ class InputBox:
     def __init__(self, pos, hide, limiter):
         self.text = ''
         self.size = 200, 30
-        self.rect = pygame.Rect((pos[0], pos[1], *self.size))
-        self.image = pygame.transform.scale(load_image('line.png'), self.size)
         self.pos = pos
+        self.rect = pygame.Rect(*self.pos, *self.size)
+        self.image = pygame.transform.scale(load_image('line.png'), self.size)
         self.can_input = False
         self.hide = hide
         self.limiter = limiter
@@ -1026,7 +1038,7 @@ def entertogame(newbie):
     while running:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
-                running = False
+                areyousure(choose_menu, terminate)
             if event.type == pygame.MOUSEBUTTONDOWN:
                 res = enter.get_click(event.pos)
                 if res == 1:
@@ -1196,7 +1208,7 @@ def choose_menu():
     while running:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
-                running = False
+                areyousure(choose_menu, terminate)
             if event.type == pygame.MOUSEBUTTONDOWN:
                 res = choose.get_click(event.pos)
                 if res == 1:
@@ -1285,7 +1297,7 @@ def mainmenu():
     while running:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
-                running = False
+                areyousure(mainmenu, terminate)
             if event.type == pygame.MOUSEBUTTONDOWN:
                 res = menu.get_click(event.pos)
                 if res == 1:
@@ -1298,10 +1310,10 @@ def mainmenu():
                     return level_menu()
                     # Выбор уровня
                 if res == 4:
-                    return choose_menu()
+                    return areyousure(mainmenu, choose_menu)
                     # Смена пользователя
                 if res == 5:
-                    terminate()
+                    areyousure(mainmenu, terminate)
                     # Выйти из игры
                 if res == 6:
                     quiet = not quiet
@@ -1406,7 +1418,7 @@ def score_table():
     while running:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
-                terminate()
+                areyousure(score_table, terminate)
             if event.type == pygame.MOUSEBUTTONDOWN:
                 res = table.get_click(event.pos)
                 if res == 1:
@@ -1455,7 +1467,7 @@ def start_window():
     while running:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
-                terminate()
+                areyousure(start_window, terminate)
             if event.type == pygame.MOUSEBUTTONDOWN:
                 res = window.get_click(event.pos)
                 if res == 1:
@@ -1469,6 +1481,57 @@ def start_window():
         screen.blit(back_image, (0, 0))
         window.render(screen)
 
+        pygame.display.flip()
+        clock.tick(FPS)
+
+
+# Класс подтверждения действия
+class AreYouSure:
+    def __init__(self):
+        self.buttons = {
+            'ok': Button(pos=((WIDTH - 100) // 2 - 25, 155), size=(45, 45), image_names=['ok_btn.png']),
+            'no': Button(pos=((WIDTH - 100) // 2 + 70, 155), size=(45, 45), image_names=['close_btn.png']),
+            'sound': SoundButton(pos=(540, 300), size=(45, 45))}
+
+    def get_click(self, pos):
+        if self.buttons['ok'].get_click(pos):
+            return 1
+        if self.buttons['no'].get_click(pos):
+            return 2
+        if self.buttons['sound'].get_click(pos):
+            return 3
+
+    def render(self, screen):
+        for btn in self.buttons:
+            self.buttons[btn].render(screen)
+        font = pygame.font.Font(font_name, 30)
+        text = font.render('Вы уверены?', True, font_color)
+        screen.blit(text, ((WIDTH - text.get_width()) // 2, 85))
+
+
+# Подтвердить действие
+def areyousure(previous, confirm):
+    global quiet
+
+    sure = AreYouSure()
+    running = True
+    while running:
+        for event in pygame.event.get():
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                res = sure.get_click(event.pos)
+                if res == 1:
+                    return confirm()
+                    # Подтверждение действия
+                if res == 2:
+                    return previous()
+                    # Отмена действия
+                if res == 3:
+                    quiet = not quiet
+                    play_music()
+                    # изменить статус тишины
+        screen.blit(back_image, (0, 0))
+
+        sure.render(screen)
         pygame.display.flip()
         clock.tick(FPS)
 

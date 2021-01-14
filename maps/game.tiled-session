@@ -52,7 +52,7 @@
             "scale": 0.6856854838709677,
             "selectedLayer": 0,
             "viewCenter": {
-                "x": 479.08262275801235,
+                "x": 479.8118200529256,
                 "y": 159.6942075860041
             }
         },
@@ -60,7 +60,7 @@
             "scale": 0.4453125,
             "selectedLayer": 0,
             "viewCenter": {
-                "x": 1600,
+                "x": 1598.877192982456,
                 "y": 160.5614035087719
             }
         },
@@ -92,23 +92,23 @@
             "scale": 1,
             "selectedLayer": 0,
             "viewCenter": {
-                "x": 959.5,
-                "y": 160
+                "x": 960,
+                "y": 159.5
             }
         },
         "map10.tmx": {
             "scale": 1,
             "selectedLayer": 0,
             "viewCenter": {
-                "x": 133,
-                "y": 112
+                "x": 1600,
+                "y": 160.5
             }
         },
         "map2.tmx": {
             "scale": 1,
             "selectedLayer": 0,
             "viewCenter": {
-                "x": 959.5,
+                "x": 960,
                 "y": 160.5
             }
         },
@@ -116,7 +116,7 @@
             "scale": 0.75,
             "selectedLayer": 0,
             "viewCenter": {
-                "x": 959.3333333333333,
+                "x": 960,
                 "y": 160.66666666666663
             }
         },
@@ -124,7 +124,7 @@
             "scale": 0.75,
             "selectedLayer": 0,
             "viewCenter": {
-                "x": 1279.3333333333333,
+                "x": 1280,
                 "y": 160.66666666666663
             }
         },
@@ -132,31 +132,31 @@
             "scale": 0.75,
             "selectedLayer": 0,
             "viewCenter": {
-                "x": 2692,
-                "y": 232
+                "x": 1280,
+                "y": 159.33333333333331
             }
         },
         "map6.tmx": {
             "scale": 1,
             "selectedLayer": 0,
             "viewCenter": {
-                "x": 910,
-                "y": 136
+                "x": 1920,
+                "y": 160.5
             }
         },
         "map7.tmx": {
             "scale": 0.75,
             "selectedLayer": 0,
             "viewCenter": {
-                "x": 2825.333333333333,
-                "y": 130.66666666666669
+                "x": 1600,
+                "y": 160.66666666666663
             }
         },
         "map8.tmx": {
             "scale": 0.75,
             "selectedLayer": 0,
             "viewCenter": {
-                "x": 1969.3333333333333,
+                "x": 1052,
                 "y": 249.3333333333333
             }
         },
