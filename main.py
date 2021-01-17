@@ -1309,7 +1309,7 @@ class MainMenu:
         screen.blit(text, ((WIDTH - text.get_width()) // 2, 20))
         font = pygame.font.Font(font_name, 20)
         text = font.render(nickname, True, font_color)
-        screen.blit(text, (10, 10))
+        screen.blit(text, (5, 5))
 
     def get_click(self, pos):
         if self.buttons['rating'].get_click(pos):
