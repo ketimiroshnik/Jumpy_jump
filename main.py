@@ -520,7 +520,8 @@ class LevelMenu:
         self.level_icons = level_icons
         self.buttons = {'shop': Button(pos=(540, 10), size=(35, 35), image_names=['shop_btn.png']),
                         'mainmenu': Button(pos=(220, 10), size=(150, 30), image_names=['mainmenu_btn.png']),
-                        'sound': SoundButton(pos=(540, 300), size=(45, 45))}
+                        'sound': SoundButton(pos=(540, 300), size=(45, 45)),
+                        'how_to_play': TextButton(pos=(190, 300), image='help_btn.png', text=' Как играть')}
         self.coins = CoinsStatus((20, 20))
 
     def render(self, screen):
@@ -540,6 +541,8 @@ class LevelMenu:
             return LEVEL_COUNT + 2
         elif self.buttons['sound'].get_click(pos):
             return LEVEL_COUNT + 3
+        elif self.buttons['how_to_play'].get_click(pos):
+            return LEVEL_COUNT + 4
 
 
 # функция, реализующая меню с уровнями
@@ -582,11 +585,71 @@ def level_menu():
                     quiet = not quiet
                     play_music('menu.mp3')
                     # изменить статус тишины
+                elif res == LEVEL_COUNT + 4:
+                    return howtoplaymenu()
+                    # переход в меню с подсказками
 
         screen.blit(back_image, (0, 0))
 
         menu.render(screen)
 
+        pygame.display.flip()
+        clock.tick(FPS)
+
+
+# Класс, реализующий меню с обучением
+class HowToPlay:
+    def __init__(self):
+        self.buttons = {'got_it': Button(pos=(275, 300), size=(45, 45), image_names=['ok_btn.png']),
+                        'sound': SoundButton(pos=(540, 300), size=(45, 45))}
+        self.text = ['Как только вы запустите уровень, ваш персонаж',
+                     'и камера начнут движение. Ваша цель - пройти',
+                     'уровень, не отстав от камеры. В этом вам',
+                     'будут мешать препятствия, останавливающие',
+                     'вас при столкновении (камера при этом',
+                     'продолжит движение). Нажимайте ПРОБЕЛ, чтобы',
+                     'сменить гравитацию и обойти препятсвие!']
+
+    def get_click(self, pos):
+        if self.buttons['got_it'].get_click(pos):
+            return 1
+        if self.buttons['sound'].get_click(pos):
+            return 2
+
+    def render(self, screen):
+        for btn in self.buttons:
+            self.buttons[btn].render(screen)
+        font = pygame.font.Font(font_name, 35)
+        text = font.render('Как играть', True, (200, 200, 200))
+        screen.blit(text, (205, 10))
+        font = pygame.font.Font(font_name, 23)
+        move = 0
+        for txt in self.text:
+            text = font.render(txt, True, font_color)
+            screen.blit(text, (5, 57 + 23 * move))
+            move += 1
+
+
+# Обучающее меню
+def howtoplaymenu():
+    global quiet
+    hint = HowToPlay()
+    running = True
+    while running:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                areyousure(howtoplaymenu, terminate)
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                res = hint.get_click(event.pos)
+                if res == 1:
+                    return level_menu()
+                    # возврат в главное меню
+                if res == 2:
+                    quiet = not quiet
+                    play_music('menu.mp3')
+                    # изменить статус тишины
+        screen.blit(back_image, (0, 0))
+        hint.render(screen)
         pygame.display.flip()
         clock.tick(FPS)
 
