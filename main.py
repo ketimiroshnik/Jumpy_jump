@@ -602,14 +602,14 @@ class HowToPlay:
     def __init__(self):
         self.buttons = {'got_it': Button(pos=(275, 300), size=(45, 45), image_names=['ok_btn.png']),
                         'sound': SoundButton(pos=(540, 300), size=(45, 45))}
-        self.text = ['Как только Вы запустите уровень, Ваш персонаж',
-                    'и камера начнут движение. Ваша цель - пройти',
-                    'уровень, не отстав от камеры. В этом Вам',
-                    'будут мешать препятствия. Если Вы слишком',
-                    'долго не будете двигаться, застряв в них,',
-                    'то проиграете - камера Вас обгонит. Нажимайте',
-                    'ПРОБЕЛ, чтобы сменить гравитацию и',
-                    'обойти препятствие!']
+        self.text = [' Как только Вы запустите  уровень, Ваш персонаж',
+                    'и камера начнут  движение.  Ваша цель -  пройти',
+                    'уровень,  не  отстав  от  камеры.   В этом  Вам',
+                    'будут  мешать  препятствия.   Если  Вы  слишком',
+                    'долго  не  будете  двигаться,  застряв  в  них,',
+                    'то  проиграете - камера Вас обгонит.  Нажимайте',
+                    'ПРОБЕЛ,  чтобы   сменить  гравитацию  и  обойти',
+                    'препятствие!']
 
     def get_click(self, pos):
         if self.buttons['got_it'].get_click(pos):
@@ -623,11 +623,11 @@ class HowToPlay:
         font = pygame.font.Font(font_name, 35)
         text = font.render('Как играть', True, (200, 200, 200))
         screen.blit(text, (205, 10))
-        font = pygame.font.Font(font_name, 23)
+        font = pygame.font.Font(font_name, 22)
         move = 0
         for txt in self.text:
             text = font.render(txt, True, font_color)
-            screen.blit(text, (5, 57 + 23 * move))
+            screen.blit(text, (17, 70 + 26 * move))
             move += 1
 
 
